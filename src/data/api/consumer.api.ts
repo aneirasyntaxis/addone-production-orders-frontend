@@ -5,7 +5,7 @@ import { ApiResponse } from '../dtos/company.dto';
 
 export class ConsumerApi {
   async getAll(): Promise<ConsumerDto[]> {
-    const response = await apiClient.get<ApiResponse<ConsumerDto[]>>('/api/consumers');
+    const response = await apiClient.get<ApiResponse<ConsumerDto[]>>('/consumers');
 
     if (!response.isSuccess || !response.data) {
       throw new Error(response.message || 'Error al obtener los consumos');
@@ -15,7 +15,7 @@ export class ConsumerApi {
   }
 
   async getById(id: number): Promise<ConsumerDto> {
-    const response = await apiClient.get<ApiResponse<ConsumerDto>>(`/api/consumers/${id}`);
+    const response = await apiClient.get<ApiResponse<ConsumerDto>>(`/consumers/${id}`);
 
     if (!response.isSuccess || !response.data) {
       throw new Error(response.message || 'Error al obtener el consumo');
@@ -26,7 +26,7 @@ export class ConsumerApi {
 
   async getByDocNumber(docNumber: number): Promise<ConsumerDto> {
     const response = await apiClient.get<ApiResponse<ConsumerDto>>(
-      `/api/consumers/by-doc-number/${docNumber}`
+      `/consumers/by-doc-number/${docNumber}`
     );
 
     if (!response.isSuccess || !response.data) {
@@ -38,7 +38,7 @@ export class ConsumerApi {
 
   async getByOT(ot: string): Promise<ConsumerDto[]> {
     const response = await apiClient.get<ApiResponse<ConsumerDto[]>>(
-      `/api/consumers/by-ot/${ot}`
+      `/consumers/by-ot/${ot}`
     );
 
     if (!response.isSuccess || !response.data) {
@@ -50,7 +50,7 @@ export class ConsumerApi {
 
   async getByDateRange(fromDate: string, toDate: string): Promise<ConsumerDto[]> {
     const response = await apiClient.get<ApiResponse<ConsumerDto[]>>(
-      `/api/consumers/by-date-range/${fromDate}/${toDate}`
+      `/consumers/by-date-range/${fromDate}/${toDate}`
     );
 
     if (!response.isSuccess || !response.data) {
@@ -62,7 +62,7 @@ export class ConsumerApi {
 
   async create(consumer: CreateConsumerDto): Promise<ConsumerDto> {
     const response = await apiClient.post<ApiResponse<ConsumerDto>>(
-      '/api/consumers',
+      '/consumers',
       consumer
     );
 
@@ -77,7 +77,7 @@ export class ConsumerApi {
 
   async update(id: number, consumer: CreateConsumerDto): Promise<ConsumerDto> {
     const response = await apiClient.put<ApiResponse<ConsumerDto>>(
-      `/api/consumers/${id}`,
+      `/consumers/${id}`,
       consumer
     );
 
@@ -91,7 +91,7 @@ export class ConsumerApi {
   }
 
   async delete(id: number): Promise<boolean> {
-    const response = await apiClient.delete<ApiResponse<boolean>>(`/api/consumers/${id}`);
+    const response = await apiClient.delete<ApiResponse<boolean>>(`/consumers/${id}`);
 
     if (!response.isSuccess) {
       throw new Error(response.message || 'Error al eliminar el consumo');

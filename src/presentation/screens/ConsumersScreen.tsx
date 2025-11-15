@@ -6,13 +6,18 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Toast from 'react-native-toast-message';
+import { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme/theme';
 import { Card } from '../components/Card';
 import { Header } from '../components/Header';
 import { Loading } from '../components/Loading';
+import { FAB } from '../components/FAB';
 import { Button } from '../components/Button';
 import { useConsumers } from '../hooks/useConsumers';
 import { Consumer } from '../../domain/entities/consumer.entity';
@@ -20,6 +25,7 @@ import { handleError } from '../../core/errors/error-handler';
 import { logger } from '../../core/logging/logger';
 
 export const ConsumersScreen: React.FC = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { data: consumers, isLoading, error, refetch, isRefetching } = useConsumers();
 
   // Log errors to console when they occur
@@ -37,8 +43,22 @@ export const ConsumersScreen: React.FC = () => {
     }
   }, [consumers]);
 
+  const handleCreateConsumption = () => {
+    logger.info('ConsumersScreen: Create consumption button pressed');
+    // TODO: Navigate to create consumption screen
+    Toast.show({
+      type: 'info',
+      text1: 'Crear Consumo',
+      text2: 'Función en desarrollo',
+    });
+  };
+
   const renderConsumerItem = ({ item }: { item: Consumer }) => (
-    <Card style={styles.consumerCard}>
+    <TouchableOpacity
+      onPress={() => navigation.navigate('ConsumerDetail', { id: item.docEntry || 0 })}
+      activeOpacity={0.7}
+    >
+      <Card style={styles.consumerCard}>
       <View style={styles.consumerHeader}>
         <View style={styles.consumerHeaderLeft}>
           <Text style={styles.consumerNumber}>Consumo #{item.docNum}</Text>
@@ -72,11 +92,10 @@ export const ConsumersScreen: React.FC = () => {
             📦 {item.documentLines.length} líneas de consumo
           </Text>
         </View>
-      </View>
-    </Card>
-  );
-
-  if (isLoading) {
+        </View>
+      </Card>
+    </TouchableOpacity>
+  );  if (isLoading) {
     return <Loading />;
   }
 
@@ -115,6 +134,9 @@ export const ConsumersScreen: React.FC = () => {
         }
       />
 
+      {/* FAB Button */}
+      <FAB onPress={handleCreateConsumption} />
+
       <Toast />
     </SafeAreaView>
   );
@@ -146,6 +168,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: theme.spacing.md,
+    paddingBottom: 80, // Extra padding for FAB
   },
   consumerCard: {
     marginBottom: theme.spacing.md,

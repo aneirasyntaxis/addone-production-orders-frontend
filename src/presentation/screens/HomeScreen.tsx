@@ -5,14 +5,19 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Toast from 'react-native-toast-message';
+import { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme/theme';
 import { Card } from '../components/Card';
 import { Header } from '../components/Header';
 import { Loading } from '../components/Loading';
 import { Button } from '../components/Button';
+import { FAB } from '../components/FAB';
 import { useProductionOrders } from '../hooks/useProductionOrders';
 import { useAuth } from '../context/AuthContext';
 import { ProductionOrder } from '../../domain/entities/production-order.entity';
@@ -21,6 +26,7 @@ import { logger } from '../../core/logging/logger';
 
 export const HomeScreen: React.FC = () => {
   const { session } = useAuth();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { data: orders, isLoading, error, refetch, isRefetching } = useProductionOrders();
 
   // Log errors to console when they occur
@@ -38,8 +44,17 @@ export const HomeScreen: React.FC = () => {
     }
   }, [orders]);
 
+  const handleCreateOrder = () => {
+    logger.info('HomeScreen: Create order button pressed');
+    navigation.navigate('CreateProductionOrder');
+  };
+
   const renderOrderItem = ({ item }: { item: ProductionOrder }) => (
-    <Card style={styles.orderCard}>
+    <TouchableOpacity
+      onPress={() => navigation.navigate('ProductionOrderDetail', { id: item.absoluteEntry || 0 })}
+      activeOpacity={0.7}
+    >
+      <Card style={styles.orderCard}>
       <View style={styles.orderHeader}>
         <View style={styles.orderHeaderLeft}>
           <Text style={styles.orderNumber}>OF #{item.documentNumber || 'N/A'}</Text>
@@ -76,11 +91,10 @@ export const HomeScreen: React.FC = () => {
             📦 {item.productionOrderLines.length} materiales
           </Text>
         </View>
-      </View>
-    </Card>
-  );
-
-  const getStatusStyle = (status?: string) => {
+        </View>
+      </Card>
+    </TouchableOpacity>
+  );  const getStatusStyle = (status?: string) => {
     switch (status?.toLowerCase()) {
       case 'boposreleased':
         return styles.statusReleased;
@@ -144,6 +158,9 @@ export const HomeScreen: React.FC = () => {
         }
       />
 
+      {/* FAB Button */}
+      <FAB onPress={handleCreateOrder} />
+
       <Toast />
     </SafeAreaView>
   );
@@ -156,6 +173,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: theme.spacing.md,
+    paddingBottom: 80, // Extra padding for FAB
   },
   orderCard: {
     marginBottom: theme.spacing.md,

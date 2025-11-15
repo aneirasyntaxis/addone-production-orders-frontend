@@ -8,6 +8,10 @@ import { LoginScreen } from '../screens/LoginScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { AdvancedProductsScreen } from '../screens/AdvancedProductsScreen';
 import { ConsumersScreen } from '../screens/ConsumersScreen';
+import { ProductionOrderDetailScreen } from '../screens/ProductionOrderDetailScreen';
+import { AdvancedProductDetailScreen } from '../screens/AdvancedProductDetailScreen';
+import { ConsumerDetailScreen } from '../screens/ConsumerDetailScreen';
+import { CreateProductionOrderScreen } from '../screens/CreateProductionOrderScreen';
 import { useAuth } from '../context/AuthContext';
 import { Loading } from '../components/Loading';
 import { Text } from 'react-native';
@@ -84,7 +88,29 @@ export const AppNavigator: React.FC = () => {
         {!isAuthenticated ? (
           <Stack.Screen name="Login" component={LoginScreen} />
         ) : (
-          <Stack.Screen name="MainTabs" component={MainTabs} />
+          <>
+            <Stack.Screen name="MainTabs" component={MainTabs} />
+            <Stack.Screen 
+              name="CreateProductionOrder" 
+              component={CreateProductionOrderScreen}
+              options={{ presentation: 'card' }}
+            />
+            <Stack.Screen 
+              name="ProductionOrderDetail" 
+              component={ProductionOrderDetailScreen}
+              options={{ presentation: 'card' }}
+            />
+            <Stack.Screen 
+              name="AdvancedProductDetail" 
+              component={AdvancedProductDetailScreen}
+              options={{ presentation: 'card' }}
+            />
+            <Stack.Screen 
+              name="ConsumerDetail" 
+              component={ConsumerDetailScreen}
+              options={{ presentation: 'card' }}
+            />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

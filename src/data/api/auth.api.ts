@@ -6,7 +6,7 @@ import { ApiResponse } from '../dtos/company.dto';
 export class AuthApi {
   async login(credentials: UserLoginDto): Promise<UserLoginResponseDto> {
     const response = await apiClient.post<ApiResponse<UserLoginResponseDto>>(
-      '/api/users/login',
+      '/users/login',
       credentials
     );
 

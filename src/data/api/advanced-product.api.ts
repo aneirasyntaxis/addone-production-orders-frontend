@@ -6,7 +6,7 @@ import { ApiResponse } from '../dtos/company.dto';
 export class AdvancedProductApi {
   async getAll(): Promise<AdvancedProductDto[]> {
     const response = await apiClient.get<ApiResponse<AdvancedProductDto[]>>(
-      '/api/advanced-products'
+      '/advanced-products'
     );
 
     if (!response.isSuccess || !response.data) {
@@ -18,7 +18,7 @@ export class AdvancedProductApi {
 
   async getById(id: number): Promise<AdvancedProductDto> {
     const response = await apiClient.get<ApiResponse<AdvancedProductDto>>(
-      `/api/advanced-products/${id}`
+      `/advanced-products/${id}`
     );
 
     if (!response.isSuccess || !response.data) {
@@ -30,7 +30,7 @@ export class AdvancedProductApi {
 
   async getByDocNumber(docNumber: number): Promise<AdvancedProductDto> {
     const response = await apiClient.get<ApiResponse<AdvancedProductDto>>(
-      `/api/advanced-products/by-doc-number/${docNumber}`
+      `/advanced-products/by-doc-number/${docNumber}`
     );
 
     if (!response.isSuccess || !response.data) {
@@ -42,7 +42,7 @@ export class AdvancedProductApi {
 
   async getByOT(ot: string): Promise<AdvancedProductDto[]> {
     const response = await apiClient.get<ApiResponse<AdvancedProductDto[]>>(
-      `/api/advanced-products/by-ot/${ot}`
+      `/advanced-products/by-ot/${ot}`
     );
 
     if (!response.isSuccess || !response.data) {
@@ -54,7 +54,7 @@ export class AdvancedProductApi {
 
   async getByDateRange(fromDate: string, toDate: string): Promise<AdvancedProductDto[]> {
     const response = await apiClient.get<ApiResponse<AdvancedProductDto[]>>(
-      `/api/advanced-products/by-date-range/${fromDate}/${toDate}`
+      `/advanced-products/by-date-range/${fromDate}/${toDate}`
     );
 
     if (!response.isSuccess || !response.data) {
@@ -66,7 +66,7 @@ export class AdvancedProductApi {
 
   async create(product: CreateAdvancedProductDto): Promise<AdvancedProductDto> {
     const response = await apiClient.post<ApiResponse<AdvancedProductDto>>(
-      '/api/advanced-products',
+      '/advanced-products',
       product
     );
 
@@ -81,7 +81,7 @@ export class AdvancedProductApi {
 
   async update(id: number, product: CreateAdvancedProductDto): Promise<AdvancedProductDto> {
     const response = await apiClient.put<ApiResponse<AdvancedProductDto>>(
-      `/api/advanced-products/${id}`,
+      `/advanced-products/${id}`,
       product
     );
 
@@ -96,7 +96,7 @@ export class AdvancedProductApi {
 
   async delete(id: number): Promise<boolean> {
     const response = await apiClient.delete<ApiResponse<boolean>>(
-      `/api/advanced-products/${id}`
+      `/advanced-products/${id}`
     );
 
     if (!response.isSuccess) {

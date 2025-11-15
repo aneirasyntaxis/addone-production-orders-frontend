@@ -6,7 +6,7 @@ import { ApiResponse } from '../dtos/company.dto';
 export class ProductionOrderApi {
   async getAll(): Promise<ProductionOrderDto[]> {
     const response = await apiClient.get<ApiResponse<ProductionOrderDto[]>>(
-      '/api/production-orders'
+      '/production-orders'
     );
 
     if (!response.isSuccess || !response.data) {
@@ -18,7 +18,7 @@ export class ProductionOrderApi {
 
   async getById(id: number): Promise<ProductionOrderDto> {
     const response = await apiClient.get<ApiResponse<ProductionOrderDto>>(
-      `/api/production-orders/${id}`
+      `/production-orders/${id}`
     );
 
     if (!response.isSuccess || !response.data) {
@@ -30,7 +30,7 @@ export class ProductionOrderApi {
 
   async getByDocNumber(docNumber: number): Promise<ProductionOrderDto> {
     const response = await apiClient.get<ApiResponse<ProductionOrderDto>>(
-      `/api/production-orders/by-doc-number/${docNumber}`
+      `/production-orders/by-doc-number/${docNumber}`
     );
 
     if (!response.isSuccess || !response.data) {
@@ -42,7 +42,7 @@ export class ProductionOrderApi {
 
   async getByStatus(status: string): Promise<ProductionOrderDto[]> {
     const response = await apiClient.get<ApiResponse<ProductionOrderDto[]>>(
-      `/api/production-orders/by-status/${status}`
+      `/production-orders/by-status/${status}`
     );
 
     if (!response.isSuccess || !response.data) {
@@ -54,7 +54,7 @@ export class ProductionOrderApi {
 
   async getByOT(ot: string): Promise<ProductionOrderDto[]> {
     const response = await apiClient.get<ApiResponse<ProductionOrderDto[]>>(
-      `/api/production-orders/by-ot/${ot}`
+      `/production-orders/by-ot/${ot}`
     );
 
     if (!response.isSuccess || !response.data) {
@@ -66,7 +66,7 @@ export class ProductionOrderApi {
 
   async create(order: CreateProductionOrderDto): Promise<ProductionOrderDto> {
     const response = await apiClient.post<ApiResponse<ProductionOrderDto>>(
-      '/api/production-orders',
+      '/production-orders',
       order
     );
 
@@ -81,7 +81,7 @@ export class ProductionOrderApi {
 
   async update(id: number, order: CreateProductionOrderDto): Promise<ProductionOrderDto> {
     const response = await apiClient.put<ApiResponse<ProductionOrderDto>>(
-      `/api/production-orders/${id}`,
+      `/production-orders/${id}`,
       order
     );
 
@@ -96,7 +96,7 @@ export class ProductionOrderApi {
 
   async delete(id: number): Promise<boolean> {
     const response = await apiClient.delete<ApiResponse<boolean>>(
-      `/api/production-orders/${id}`
+      `/production-orders/${id}`
     );
 
     if (!response.isSuccess) {

@@ -1,7 +1,11 @@
-// Presentation - Navigation Types
+// Navigation Types
 export type RootStackParamList = {
   Login: undefined;
   MainTabs: undefined;
+  CreateProductionOrder: undefined;
+  ProductionOrderDetail: { id: number };
+  AdvancedProductDetail: { id: number };
+  ConsumerDetail: { id: number };
 };
 
 export type MainTabsParamList = {

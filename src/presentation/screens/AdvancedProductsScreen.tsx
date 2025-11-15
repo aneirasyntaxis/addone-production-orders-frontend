@@ -6,13 +6,18 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Toast from 'react-native-toast-message';
+import { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme/theme';
 import { Card } from '../components/Card';
 import { Header } from '../components/Header';
 import { Loading } from '../components/Loading';
+import { FAB } from '../components/FAB';
 import { Button } from '../components/Button';
 import { useAdvancedProducts } from '../hooks/useAdvancedProducts';
 import { AdvancedProduct } from '../../domain/entities/advanced-product.entity';
@@ -20,6 +25,7 @@ import { handleError } from '../../core/errors/error-handler';
 import { logger } from '../../core/logging/logger';
 
 export const AdvancedProductsScreen: React.FC = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { data: products, isLoading, error, refetch, isRefetching } = useAdvancedProducts();
 
   // Log errors to console when they occur
@@ -37,8 +43,22 @@ export const AdvancedProductsScreen: React.FC = () => {
     }
   }, [products]);
 
+  const handleCreateAdvance = () => {
+    logger.info('AdvancedProductsScreen: Create advance button pressed');
+    // TODO: Navigate to create advance screen
+    Toast.show({
+      type: 'info',
+      text1: 'Crear Avance',
+      text2: 'Función en desarrollo',
+    });
+  };
+
   const renderProductItem = ({ item }: { item: AdvancedProduct }) => (
-    <Card style={styles.productCard}>
+    <TouchableOpacity
+      onPress={() => navigation.navigate('AdvancedProductDetail', { id: item.docEntry || 0 })}
+      activeOpacity={0.7}
+    >
+      <Card style={styles.productCard}>
       <View style={styles.productHeader}>
         <View style={styles.productHeaderLeft}>
           <Text style={styles.productNumber}>Avance #{item.docNum || 'N/A'}</Text>
@@ -70,11 +90,10 @@ export const AdvancedProductsScreen: React.FC = () => {
             📦 {item.documentLines.length} líneas de producto
           </Text>
         </View>
-      </View>
-    </Card>
-  );
-
-  if (isLoading) {
+        </View>
+      </Card>
+    </TouchableOpacity>
+  );  if (isLoading) {
     return <Loading />;
   }
 
@@ -113,6 +132,9 @@ export const AdvancedProductsScreen: React.FC = () => {
         }
       />
 
+      {/* FAB Button */}
+      <FAB onPress={handleCreateAdvance} />
+
       <Toast />
     </SafeAreaView>
   );
@@ -144,6 +166,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: theme.spacing.md,
+    paddingBottom: 80, // Extra padding for FAB
   },
   productCard: {
     marginBottom: theme.spacing.md,

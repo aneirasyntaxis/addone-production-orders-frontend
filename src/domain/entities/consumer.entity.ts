@@ -3,14 +3,23 @@ export interface ConsumerLine {
   baseLine?: number;
   baseEntry?: number;
   quantity: number;
+  lineNumber?: number;
+  itemCode?: string;
+  itemDescription?: string;
+  warehouseCode?: string;
 }
 
 export interface Consumer {
   docEntry?: number;
   docDate?: string;
+  docDueDate?: string;
+  taxDate?: string;
   docNum: number;
-  comments: string;
-  journalMemo: string;
+  series?: number;
+  comments?: string;
+  journalMemo?: string;
+  reference1?: string;
+  reference2?: string;
   documentLines: ConsumerLine[];
 }
 
