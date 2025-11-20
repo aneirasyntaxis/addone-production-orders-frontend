@@ -15,7 +15,7 @@ import { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme/theme';
 import { Card } from '../components/Card';
 import { Header } from '../components/Header';
-import { Loading } from '../components/Loading';
+import { SkeletonCard } from '../components/Skeleton';
 import { Button } from '../components/Button';
 import { FAB } from '../components/FAB';
 import { useProductionOrders } from '../hooks/useProductionOrders';
@@ -121,7 +121,16 @@ export const HomeScreen: React.FC = () => {
   };
 
   if (isLoading) {
-    return <Loading />;
+    return (
+      <SafeAreaView style={styles.container}>
+        <Header title="Órdenes de Fabricación" subtitle="Gestiona tus órdenes de producción" />
+        <View style={styles.listContainer}>
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </View>
+      </SafeAreaView>
+    );
   }
 
   if (error) {

@@ -16,7 +16,7 @@ import { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme/theme';
 import { Card } from '../components/Card';
 import { Header } from '../components/Header';
-import { Loading } from '../components/Loading';
+import { SkeletonCard } from '../components/Skeleton';
 import { FAB } from '../components/FAB';
 import { Button } from '../components/Button';
 import { useConsumers } from '../hooks/useConsumers';
@@ -96,7 +96,16 @@ export const ConsumersScreen: React.FC = () => {
       </Card>
     </TouchableOpacity>
   );  if (isLoading) {
-    return <Loading />;
+    return (
+      <SafeAreaView style={styles.container}>
+        <Header title="Consumos" subtitle="Materiales Consumidos" variant="accent" />
+        <View style={styles.listContainer}>
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </View>
+      </SafeAreaView>
+    );
   }
 
   if (error) {

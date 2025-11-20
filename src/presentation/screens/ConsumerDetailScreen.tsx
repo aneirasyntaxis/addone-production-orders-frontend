@@ -13,7 +13,7 @@ import Toast from 'react-native-toast-message';
 import { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme/theme';
 import { Card } from '../components/Card';
-import { Loading } from '../components/Loading';
+import { SkeletonDetail } from '../components/Skeleton';
 import { Button } from '../components/Button';
 import { useConsumerById } from '../hooks/useConsumerById';
 import { Consumer, ConsumerLine } from '../../domain/entities/consumer.entity';
@@ -34,7 +34,17 @@ export const ConsumerDetailScreen: React.FC<Props> = ({ route, navigation }) => 
   }, [error]);
 
   if (isLoading) {
-    return <Loading />;
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Text style={styles.backIcon}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Cargando...</Text>
+        </View>
+        <SkeletonDetail />
+      </SafeAreaView>
+    );
   }
 
   if (error || !consumer) {
