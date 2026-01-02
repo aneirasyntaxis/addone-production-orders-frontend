@@ -19,12 +19,16 @@ import { useConsumerById } from '../hooks/useConsumerById';
 import { Consumer, ConsumerLine } from '../../domain/entities/consumer.entity';
 import { handleError } from '../../core/errors/error-handler';
 import { logger } from '../../core/logging/logger';
+import { ConsumerEntryTab } from './ConsumerEntryTab';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ConsumerDetail'>;
+
+type TabType = 'info' | 'entrada';
 
 export const ConsumerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { id } = route.params;
   const { data: consumer, isLoading, error, refetch } = useConsumerById(id);
+  const [activeTab, setActiveTab] = React.useState<TabType>('info');
 
   React.useEffect(() => {
     if (error) {
@@ -54,7 +58,7 @@ export const ConsumerDetailScreen: React.FC<Props> = ({ route, navigation }) => 
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Text style={styles.backIcon}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Detalle de Consumo</Text>
+          <Text style={styles.headerTitle}>Detalle de Salida</Text>
         </View>
         <View style={styles.errorContainer}>
           <Text style={styles.errorTitle}>⚠️ Error</Text>
@@ -72,12 +76,13 @@ export const ConsumerDetailScreen: React.FC<Props> = ({ route, navigation }) => 
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Consumo #{consumer.docNum}</Text>
+        <Text style={styles.headerTitle}>Salida #{consumer.docNum}</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* General Info */}
-        <Card style={styles.card}>
+      {activeTab === 'info' && (
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {/* General Info */}
+          <Card style={styles.card}>
           <Text style={styles.sectionTitle}>Información General</Text>
           <View style={styles.infoRow}>
             <Text style={styles.label}>Número Documento:</Text>
@@ -173,6 +178,30 @@ export const ConsumerDetailScreen: React.FC<Props> = ({ route, navigation }) => 
           ))}
         </Card>
       </ScrollView>
+      )}
+
+      {activeTab === 'entrada' && (
+        <ConsumerEntryTab consumerId={consumer.docEntry || 0} />
+      )}
+
+      {/* Bottom Tab Navigation */}
+      <View style={styles.bottomTabs}>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'info' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('info')}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'info' && styles.tabIconActive]}>📄</Text>
+          <Text style={[styles.tabLabel, activeTab === 'info' && styles.tabLabelActive]}>Info</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'entrada' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('entrada')}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'entrada' && styles.tabIconActive]}>📥</Text>
+          <Text style={[styles.tabLabel, activeTab === 'entrada' && styles.tabLabelActive]}>Entrada</Text>
+        </TouchableOpacity>
+      </View>
+
       <Toast />
     </SafeAreaView>
   );
@@ -282,5 +311,39 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     width: '100%',
+  },
+  bottomTabs: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.background,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    paddingBottom: 5,
+    height: 60,
+  },
+  tabButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.sm,
+  },
+  tabButtonActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: theme.colors.primary,
+  },
+  tabIcon: {
+    fontSize: 24,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs / 2,
+  },
+  tabIconActive: {
+    color: theme.colors.primary,
+  },
+  tabLabel: {
+    fontSize: theme.fontSize.xs,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+  },
+  tabLabelActive: {
+    color: theme.colors.primary,
   },
 });

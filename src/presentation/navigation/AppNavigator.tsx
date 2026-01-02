@@ -12,6 +12,8 @@ import { ProductionOrderDetailScreen } from '../screens/ProductionOrderDetailScr
 import { AdvancedProductDetailScreen } from '../screens/AdvancedProductDetailScreen';
 import { ConsumerDetailScreen } from '../screens/ConsumerDetailScreen';
 import { CreateProductionOrderScreen } from '../screens/CreateProductionOrderScreen';
+import { CreateAdvancedProductScreen } from '../screens/CreateAdvancedProductScreen';
+import { CreateConsumerScreen } from '../screens/CreateConsumerScreen';
 import { useAuth } from '../context/AuthContext';
 import { Loading } from '../components/Loading';
 import { Text } from 'react-native';
@@ -50,20 +52,11 @@ const MainTabs: React.FC = () => {
         }}
       />
       <Tab.Screen
-        name="AdvancedProducts"
-        component={AdvancedProductsScreen}
-        options={{
-          title: 'Avances',
-          tabBarLabel: 'Avances',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24, color }}>📦</Text>,
-        }}
-      />
-      <Tab.Screen
         name="Consumers"
         component={ConsumersScreen}
         options={{
-          title: 'Consumos',
-          tabBarLabel: 'Consumos',
+          title: 'Salidas de Mercancías',
+          tabBarLabel: 'Salidas',
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 24, color }}>📋</Text>,
         }}
       />
@@ -93,6 +86,16 @@ export const AppNavigator: React.FC = () => {
             <Stack.Screen 
               name="CreateProductionOrder" 
               component={CreateProductionOrderScreen}
+              options={{ presentation: 'card' }}
+            />
+            <Stack.Screen 
+              name="CreateAdvancedProduct" 
+              component={CreateAdvancedProductScreen}
+              options={{ presentation: 'card' }}
+            />
+            <Stack.Screen 
+              name="CreateConsumer" 
+              component={CreateConsumerScreen}
               options={{ presentation: 'card' }}
             />
             <Stack.Screen 

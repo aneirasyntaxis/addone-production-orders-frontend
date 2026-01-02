@@ -2,9 +2,10 @@
 import { Consumer, CreateConsumer } from '../entities/consumer.entity';
 
 export interface IConsumerRepository {
-  getAll(): Promise<Consumer[]>;
+  getAll(docNumber?: number): Promise<Consumer[]>;
   getById(id: number): Promise<Consumer>;
   getByDocNumber(docNumber: number): Promise<Consumer>;
+  getByProductionOrderId(productionOrderId: number): Promise<Consumer[]>;
   getByOT(ot: string): Promise<Consumer[]>;
   getByDateRange(fromDate: string, toDate: string): Promise<Consumer[]>;
   create(consumer: CreateConsumer): Promise<Consumer>;

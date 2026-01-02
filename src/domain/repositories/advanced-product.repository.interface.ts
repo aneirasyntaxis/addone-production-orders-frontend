@@ -2,9 +2,11 @@
 import { AdvancedProduct, CreateAdvancedProduct } from '../entities/advanced-product.entity';
 
 export interface IAdvancedProductRepository {
-  getAll(): Promise<AdvancedProduct[]>;
+  getAll(docNumber?: number): Promise<AdvancedProduct[]>;
   getById(id: number): Promise<AdvancedProduct>;
   getByDocNumber(docNumber: number): Promise<AdvancedProduct>;
+  getByProductionOrderId(productionOrderId: number): Promise<AdvancedProduct[]>;
+  getByConsumer(consumerDocEntry: number): Promise<AdvancedProduct[]>;
   getByOT(ot: string): Promise<AdvancedProduct[]>;
   getByDateRange(fromDate: string, toDate: string): Promise<AdvancedProduct[]>;
   create(product: CreateAdvancedProduct): Promise<AdvancedProduct>;

@@ -1,4 +1,6 @@
 // Domain - Advanced Product Entity (Avance)
+import { BatchNumbers } from './batch-numbers.entity';
+
 export interface AdvancedProductLine {
   quantity: number;
   itemCode?: string;
@@ -8,6 +10,7 @@ export interface AdvancedProductLine {
   baseLine?: number;
   itemDescription?: string;
   warehouseCode?: string;
+  batchNumbers?: BatchNumbers[];
 }
 
 export interface AdvancedProduct {
@@ -27,7 +30,10 @@ export interface AdvancedProduct {
 export interface CreateAdvancedProductLine {
   quantity: number;
   itemCode?: string;
-  baseEntry: number;
+  baseEntry: number | null;
+  baseLine?: number;
+  baseType?: number | null;
+  batchNumbers?: BatchNumbers[];
 }
 
 export interface CreateAdvancedProduct {

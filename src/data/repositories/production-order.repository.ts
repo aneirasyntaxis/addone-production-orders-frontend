@@ -5,8 +5,8 @@ import { productionOrderApi } from '../api/production-order.api';
 import { ProductionOrderMapper } from '../mappers/production-order.mapper';
 
 export class ProductionOrderRepository implements IProductionOrderRepository {
-  async getAll(): Promise<ProductionOrder[]> {
-    const dtos = await productionOrderApi.getAll();
+  async getAll(documentNumber?: number): Promise<ProductionOrder[]> {
+    const dtos = await productionOrderApi.getAll(documentNumber);
     return ProductionOrderMapper.toDomainList(dtos);
   }
 

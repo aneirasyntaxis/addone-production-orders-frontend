@@ -8,13 +8,13 @@ const getAllAdvancedProductsUseCase = new GetAllAdvancedProductsUseCase(
   advancedProductRepository
 );
 
-export const useAdvancedProducts = () => {
+export const useAdvancedProducts = (docNumber?: number) => {
   return useQuery({
-    queryKey: ['advanced-products'],
+    queryKey: ['advanced-products', docNumber],
     queryFn: async () => {
       try {
-        logger.info('Fetching advanced products...');
-        const result = await getAllAdvancedProductsUseCase.execute();
+        logger.info('Fetching advanced products...', { docNumber });
+        const result = await getAllAdvancedProductsUseCase.execute(docNumber);
         logger.info('Advanced products fetched successfully', {
           count: result.length,
         });

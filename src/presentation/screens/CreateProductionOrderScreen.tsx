@@ -35,7 +35,18 @@ interface ProductionOrderLine {
   baseQuantity: string;
   plannedQuantity: string;
   productionOrderIssueType: string;
+  itemType?: string;
 }
+
+type IssueMethodDisplay = 'Manual' | 'Notificación';
+
+const issueMethodToApi = (display: IssueMethodDisplay): string => {
+  return display === 'Manual' ? 'im_Manual' : 'im_Backflush';
+};
+
+const apiToIssueMethodDisplay = (apiValue: string): IssueMethodDisplay => {
+  return apiValue === 'im_Manual' ? 'Manual' : 'Notificación';
+};
 
 export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => {
   const [mode, setMode] = useState<OrderMode>('standard');
@@ -75,7 +86,8 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
       itemName: line.itemName,
       baseQuantity: line.quantity.toString(),
       plannedQuantity: '',
-      productionOrderIssueType: 'bopoit_Manual',
+      productionOrderIssueType: line.issueMethod || 'im_Manual',
+      itemType: line.itemType,
     }));
 
     setLines(newLines);
@@ -155,7 +167,7 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
       itemName: '',
       baseQuantity: '',
       plannedQuantity: '',
-      productionOrderIssueType: 'bopoit_Manual',
+      productionOrderIssueType: 'im_Manual',
     };
     setLines([...lines, newLine]);
     // Clear "no materials" error when adding a line
@@ -265,6 +277,7 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
       baseQuantity: parseFloat(line.baseQuantity),
       plannedQuantity: line.plannedQuantity ? parseFloat(line.plannedQuantity) : undefined,
       productionOrderIssueType: line.productionOrderIssueType,
+      itemType: line.itemType,
     }));
 
     const formatDateForApi = (date: Date): string => {
@@ -511,6 +524,44 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
                   placeholderTextColor={theme.colors.textSecondary}
                 />
               </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Tipo de Emisión</Text>
+                <View style={styles.issueTypeSelector}>
+                  <TouchableOpacity
+                    style={[
+                      styles.issueTypeButton,
+                      line.productionOrderIssueType === 'im_Manual' && styles.issueTypeButtonActive,
+                    ]}
+                    onPress={() => updateLine(line.id, 'productionOrderIssueType', 'im_Manual')}
+                  >
+                    <Text
+                      style={[
+                        styles.issueTypeButtonText,
+                        line.productionOrderIssueType === 'im_Manual' && styles.issueTypeButtonTextActive,
+                      ]}
+                    >
+                      Manual
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.issueTypeButton,
+                      line.productionOrderIssueType === 'im_Backflush' && styles.issueTypeButtonActive,
+                    ]}
+                    onPress={() => updateLine(line.id, 'productionOrderIssueType', 'im_Backflush')}
+                  >
+                    <Text
+                      style={[
+                        styles.issueTypeButtonText,
+                        line.productionOrderIssueType === 'im_Backflush' && styles.issueTypeButtonTextActive,
+                      ]}
+                    >
+                      Notificación
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
           ))}
 
@@ -729,5 +780,31 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: theme.spacing.md,
+  },
+  issueTypeSelector: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.md,
+    overflow: 'hidden',
+  },
+  issueTypeButton: {
+    flex: 1,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    backgroundColor: theme.colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  issueTypeButtonActive: {
+    backgroundColor: theme.colors.primary,
+  },
+  issueTypeButtonText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: '600',
+    color: theme.colors.text,
+  },
+  issueTypeButtonTextActive: {
+    color: theme.colors.background,
   },
 });

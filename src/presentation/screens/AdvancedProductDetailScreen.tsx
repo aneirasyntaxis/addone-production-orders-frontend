@@ -54,7 +54,7 @@ export const AdvancedProductDetailScreen: React.FC<Props> = ({ route, navigation
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Text style={styles.backIcon}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Detalle de Avance</Text>
+          <Text style={styles.headerTitle}>Detalle de Entrada</Text>
         </View>
         <View style={styles.errorContainer}>
           <Text style={styles.errorTitle}>⚠️ Error</Text>
@@ -72,103 +72,104 @@ export const AdvancedProductDetailScreen: React.FC<Props> = ({ route, navigation
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Avance #{product.docNum}</Text>
+        <Text style={styles.headerTitle}>Entrada #{product.docNum}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* General Info */}
         <Card style={styles.card}>
           <Text style={styles.sectionTitle}>Información General</Text>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Número Documento:</Text>
-            <Text style={styles.value}>{product.docNum}</Text>
-          </View>
-          {product.series && (
             <View style={styles.infoRow}>
-              <Text style={styles.label}>Serie:</Text>
-              <Text style={styles.value}>{product.series}</Text>
+              <Text style={styles.label}>Número Documento:</Text>
+              <Text style={styles.value}>{product.docNum}</Text>
             </View>
-          )}
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Fecha Documento:</Text>
-            <Text style={styles.value}>
-              {new Date(product.docDate).toLocaleDateString('es-ES')}
-            </Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Fecha Vencimiento:</Text>
-            <Text style={styles.value}>
-              {new Date(product.docDueDate).toLocaleDateString('es-ES')}
-            </Text>
-          </View>
-          {product.taxDate && (
+            {product.series && (
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Serie:</Text>
+                <Text style={styles.value}>{product.series}</Text>
+              </View>
+            )}
             <View style={styles.infoRow}>
-              <Text style={styles.label}>Fecha Impuesto:</Text>
+              <Text style={styles.label}>Fecha Documento:</Text>
               <Text style={styles.value}>
-                {new Date(product.taxDate).toLocaleDateString('es-ES')}
+                {new Date(product.docDate).toLocaleDateString('es-ES')}
               </Text>
             </View>
-          )}
-          {product.reference1 && (
             <View style={styles.infoRow}>
-              <Text style={styles.label}>Referencia 1:</Text>
-              <Text style={styles.value}>{product.reference1}</Text>
+              <Text style={styles.label}>Fecha Vencimiento:</Text>
+              <Text style={styles.value}>
+                {new Date(product.docDueDate).toLocaleDateString('es-ES')}
+              </Text>
             </View>
-          )}
-          {product.reference2 && (
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>Referencia 2:</Text>
-              <Text style={styles.value}>{product.reference2}</Text>
-            </View>
-          )}
-          {product.comments && (
-            <View style={styles.remarksContainer}>
-              <Text style={styles.label}>Comentarios:</Text>
-              <Text style={styles.remarksText}>{product.comments}</Text>
-            </View>
-          )}
-          {product.journalMemo && (
-            <View style={styles.remarksContainer}>
-              <Text style={styles.label}>Comentarios:</Text>
-              <Text style={styles.remarksText}>{product.journalMemo}</Text>
-            </View>
-          )}
-        </Card>
+            {product.taxDate && (
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Fecha Impuesto:</Text>
+                <Text style={styles.value}>
+                  {new Date(product.taxDate).toLocaleDateString('es-ES')}
+                </Text>
+              </View>
+            )}
+            {product.reference1 && (
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Referencia 1:</Text>
+                <Text style={styles.value}>{product.reference1}</Text>
+              </View>
+            )}
+            {product.reference2 && (
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Referencia 2:</Text>
+                <Text style={styles.value}>{product.reference2}</Text>
+              </View>
+            )}
+            {product.comments && (
+              <View style={styles.remarksContainer}>
+                <Text style={styles.label}>Comentarios:</Text>
+                <Text style={styles.remarksText}>{product.comments}</Text>
+              </View>
+            )}
+            {product.journalMemo && (
+              <View style={styles.remarksContainer}>
+                <Text style={styles.label}>Comentarios:</Text>
+                <Text style={styles.remarksText}>{product.journalMemo}</Text>
+              </View>
+            )}
+          </Card>
 
-        {/* Details */}
-        <Card style={styles.card}>
-          <Text style={styles.sectionTitle}>
-            Detalle ({product.documentLines.length})
-          </Text>
-          {product.documentLines.map((line: AdvancedProductLine, index: number) => (
-            <View key={index} style={styles.lineItem}>
-              <View style={styles.lineHeader}>
-                <Text style={styles.lineNumber}>Línea {line.lineNumber || line.lineNum}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.label}>Código Producto:</Text>
-                <Text style={styles.value}>{line.itemCode || 'N/A'}</Text>
-              </View>
-              {line.itemDescription && (
-                <View style={styles.infoRow}>
-                  <Text style={styles.label}>Descripción:</Text>
-                  <Text style={styles.value}>{line.itemDescription}</Text>
+          {/* Details */}
+          <Card style={styles.card}>
+            <Text style={styles.sectionTitle}>
+              Detalle ({product.documentLines.length})
+            </Text>
+            {product.documentLines.map((line: AdvancedProductLine, index: number) => (
+              <View key={index} style={styles.lineItem}>
+                <View style={styles.lineHeader}>
+                  <Text style={styles.lineNumber}>Línea {line.lineNumber || line.lineNum}</Text>
                 </View>
-              )}
-              <View style={styles.infoRow}>
-                <Text style={styles.label}>Cantidad:</Text>
-                <Text style={styles.value}>{line.quantity || 0}</Text>
-              </View>
-              {line.warehouseCode && (
                 <View style={styles.infoRow}>
-                  <Text style={styles.label}>Almacén:</Text>
-                  <Text style={styles.value}>{line.warehouseCode}</Text>
+                  <Text style={styles.label}>Código Producto:</Text>
+                  <Text style={styles.value}>{line.itemCode || 'N/A'}</Text>
                 </View>
-              )}
-            </View>
-          ))}
-        </Card>
-      </ScrollView>
+                {line.itemDescription && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.label}>Descripción:</Text>
+                    <Text style={styles.value}>{line.itemDescription}</Text>
+                  </View>
+                )}
+                <View style={styles.infoRow}>
+                  <Text style={styles.label}>Cantidad:</Text>
+                  <Text style={styles.value}>{line.quantity || 0}</Text>
+                </View>
+                {line.warehouseCode && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.label}>Almacén:</Text>
+                    <Text style={styles.value}>{line.warehouseCode}</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+          </Card>
+        </ScrollView>
+
       <Toast />
     </SafeAreaView>
   );

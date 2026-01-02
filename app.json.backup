@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "addone-production-orders-frontend",
+    "name": "BEM Production Orders",
     "slug": "addone-production-orders-frontend",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -21,10 +21,16 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.aneira.one.addoneproductionordersfrontend"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "022dd163-e8c3-4cc1-aa47-6f28e3d69c4b"
+      }
     }
   }
 }

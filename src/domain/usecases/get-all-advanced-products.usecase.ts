@@ -5,7 +5,7 @@ import { IAdvancedProductRepository } from '../repositories/advanced-product.rep
 export class GetAllAdvancedProductsUseCase {
   constructor(private advancedProductRepository: IAdvancedProductRepository) {}
 
-  async execute(): Promise<AdvancedProduct[]> {
-    return await this.advancedProductRepository.getAll();
+  async execute(docNumber?: number): Promise<AdvancedProduct[]> {
+    return await this.advancedProductRepository.getAll(docNumber);
   }
 }

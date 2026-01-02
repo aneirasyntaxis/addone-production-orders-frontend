@@ -1,10 +1,14 @@
 // Data - Production Order DTOs
 export interface ProductionOrderLineDto {
   itemNo: string | null;
+  itemName?: string;
   lineNumber?: number;
   baseQuantity: number;
   plannedQuantity?: number;
   issuedQuantity?: number;
+  additionalQuantity?: number;
+  warehouse?: string;
+  itemType?: string;
   productionOrderIssueType?: string | null;
 }
 
@@ -17,10 +21,15 @@ export interface ProductionOrderDto {
   itemNo: string;
   plannedQuantity: number;
   postingDate?: string;
+  startDate?: string;
+  creationDate?: string;
   journalRemarks?: string;
   remarks?: string | null;
   productionOrderOriginEntry?: number | null;
   productionOrderOriginNumber?: number | null;
+  completedQuantity?: number;
+  rejectedQuantity?: number;
+  warehouse?: string;
   productionOrderLines: ProductionOrderLineDto[];
 }
 
@@ -29,6 +38,7 @@ export interface CreateProductionOrderLineDto {
   BaseQuantity: number;
   PlannedQuantity?: number;
   ProductionOrderIssueType?: string;
+  ItemType?: string;
 }
 
 export interface CreateProductionOrderDto {

@@ -6,6 +6,7 @@ import {
   FlatList,
   RefreshControl,
   TouchableOpacity,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -27,7 +28,18 @@ import { logger } from '../../core/logging/logger';
 export const HomeScreen: React.FC = () => {
   const { session } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { data: orders, isLoading, error, refetch, isRefetching } = useProductionOrders();
+  const [searchText, setSearchText] = React.useState('');
+  const [searchNumber, setSearchNumber] = React.useState<number | undefined>(undefined);
+  const { data: orders, isLoading, error, refetch, isRefetching } = useProductionOrders(searchNumber);
+
+  // Debounce search - búsqueda automática después de 850ms de inactividad
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      handleSearch();
+    }, 850);
+
+    return () => clearTimeout(timer);
+  }, [searchText]);
 
   // Log errors to console when they occur
   React.useEffect(() => {
@@ -47,6 +59,24 @@ export const HomeScreen: React.FC = () => {
   const handleCreateOrder = () => {
     logger.info('HomeScreen: Create order button pressed');
     navigation.navigate('CreateProductionOrder');
+  };
+
+  const handleSearch = () => {
+    const numericValue = searchText.trim() === '' ? undefined : parseInt(searchText, 10);
+    if (searchText.trim() !== '' && isNaN(numericValue!)) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Por favor ingrese solo números',
+      });
+      return;
+    }
+    setSearchNumber(numericValue);
+  };
+
+  const handleClearSearch = () => {
+    setSearchText('');
+    setSearchNumber(undefined);
   };
 
   const renderOrderItem = ({ item }: { item: ProductionOrder }) => (
@@ -149,6 +179,24 @@ export const HomeScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <Header title="Órdenes de Fabricación" subtitle="Gestiona tus órdenes de producción" />
+      
+      {/* Search Input */}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Buscar por número de orden de fabricación"
+          placeholderTextColor={theme.colors.textSecondary}
+          value={searchText}
+          onChangeText={setSearchText}
+          keyboardType="numeric"
+        />
+        {searchText !== '' && (
+          <TouchableOpacity onPress={handleClearSearch} style={styles.clearButton}>
+            <Text style={styles.clearButtonText}>✕</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
       {/* Orders List */}
       <FlatList
         data={orders || []}
@@ -179,6 +227,42 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.surface,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+    backgroundColor: theme.colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  searchInput: {
+    flex: 1,
+    height: 44,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: theme.spacing.md,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.text,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  clearButton: {
+    position: 'absolute',
+    right: theme.spacing.md + theme.spacing.sm,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.textSecondary,
+    borderRadius: 12,
+  },
+  clearButtonText: {
+    color: theme.colors.background,
+    fontSize: theme.fontSize.sm,
+    fontWeight: 'bold',
   },
   listContainer: {
     padding: theme.spacing.md,

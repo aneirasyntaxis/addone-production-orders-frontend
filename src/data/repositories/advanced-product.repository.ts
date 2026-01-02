@@ -5,8 +5,8 @@ import { advancedProductApi } from '../api/advanced-product.api';
 import { AdvancedProductMapper } from '../mappers/advanced-product.mapper';
 
 export class AdvancedProductRepository implements IAdvancedProductRepository {
-  async getAll(): Promise<AdvancedProduct[]> {
-    const dtos = await advancedProductApi.getAll();
+  async getAll(docNumber?: number): Promise<AdvancedProduct[]> {
+    const dtos = await advancedProductApi.getAll(docNumber);
     return AdvancedProductMapper.toDomainList(dtos);
   }
 
@@ -18,6 +18,16 @@ export class AdvancedProductRepository implements IAdvancedProductRepository {
   async getByDocNumber(docNumber: number): Promise<AdvancedProduct> {
     const dto = await advancedProductApi.getByDocNumber(docNumber);
     return AdvancedProductMapper.toDomain(dto);
+  }
+
+  async getByProductionOrderId(productionOrderId: number): Promise<AdvancedProduct[]> {
+    const dtos = await advancedProductApi.getByProductionOrderId(productionOrderId);
+    return AdvancedProductMapper.toDomainList(dtos);
+  }
+
+  async getByConsumer(consumerDocEntry: number): Promise<AdvancedProduct[]> {
+    const dtos = await advancedProductApi.getByConsumer(consumerDocEntry);
+    return AdvancedProductMapper.toDomainList(dtos);
   }
 
   async getByOT(ot: string): Promise<AdvancedProduct[]> {

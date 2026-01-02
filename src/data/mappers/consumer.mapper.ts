@@ -18,6 +18,11 @@ export class ConsumerMapper {
       baseLine: dto.baseLine,
       baseEntry: dto.baseEntry,
       quantity: dto.quantity,
+      lineNumber: dto.lineNum,
+      itemCode: dto.itemCode ?? undefined,
+      itemDescription: dto.itemDescription ?? undefined,
+      warehouseCode: dto.warehouseCode ?? undefined,
+      batchNumbers: dto.batchNumbers,
     };
   }
 
@@ -25,6 +30,7 @@ export class ConsumerMapper {
     return {
       docEntry: dto.docEntry,
       docDate: dto.docDate,
+      docDueDate: dto.docDueDate,
       docNum: dto.docNum,
       comments: dto.comments,
       journalMemo: dto.journalMemo,
@@ -38,15 +44,15 @@ export class ConsumerMapper {
 
   static lineToDto(line: CreateConsumerLine): CreateConsumerLineDto {
     return {
-      BaseLine: line.baseLine,
-      BaseEntry: line.baseEntry,
       Quantity: line.quantity,
+      ItemCode: line.itemCode,
+      BaseEntry: line.baseEntry,
     };
   }
 
   static toDto(consumer: CreateConsumer): CreateConsumerDto {
     return {
-      DocDate: consumer.docDate,
+      DocDueDate: consumer.docDueDate,
       Comments: consumer.comments,
       JournalMemo: consumer.journalMemo,
       DocumentLines: consumer.documentLines.map((line) => this.lineToDto(line)),

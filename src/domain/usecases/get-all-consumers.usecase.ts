@@ -5,7 +5,7 @@ import { IConsumerRepository } from '../repositories/consumer.repository.interfa
 export class GetAllConsumersUseCase {
   constructor(private consumerRepository: IConsumerRepository) {}
 
-  async execute(): Promise<Consumer[]> {
-    return await this.consumerRepository.getAll();
+  async execute(docNumber?: number): Promise<Consumer[]> {
+    return await this.consumerRepository.getAll(docNumber);
   }
 }

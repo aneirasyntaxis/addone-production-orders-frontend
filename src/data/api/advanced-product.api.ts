@@ -4,9 +4,10 @@ import { AdvancedProductDto, CreateAdvancedProductDto } from '../dtos/advanced-p
 import { ApiResponse } from '../dtos/company.dto';
 
 export class AdvancedProductApi {
-  async getAll(): Promise<AdvancedProductDto[]> {
+  async getAll(docNumber?: number): Promise<AdvancedProductDto[]> {
+    const params = docNumber ? `?docNumber=${docNumber}` : '';
     const response = await apiClient.get<ApiResponse<AdvancedProductDto[]>>(
-      '/advanced-products'
+      `/advanced-products${params}`
     );
 
     if (!response.isSuccess || !response.data) {
@@ -47,6 +48,30 @@ export class AdvancedProductApi {
 
     if (!response.isSuccess || !response.data) {
       throw new Error(response.message || 'Error al obtener los avances');
+    }
+
+    return response.data;
+  }
+
+  async getByProductionOrderId(productionOrderId: number): Promise<AdvancedProductDto[]> {
+    const response = await apiClient.get<ApiResponse<AdvancedProductDto[]>>(
+      `/advanced-products/by-of/${productionOrderId}`
+    );
+
+    if (!response.isSuccess || !response.data) {
+      throw new Error(response.message || 'Error al obtener los avances de la orden de fabricación');
+    }
+
+    return response.data;
+  }
+
+  async getByConsumer(consumerDocEntry: number): Promise<AdvancedProductDto[]> {
+    const response = await apiClient.get<ApiResponse<AdvancedProductDto[]>>(
+      `/advanced-products/by-salida/${consumerDocEntry}`
+    );
+
+    if (!response.isSuccess || !response.data) {
+      throw new Error(response.message || 'Error al obtener las entradas de la salida');
     }
 
     return response.data;

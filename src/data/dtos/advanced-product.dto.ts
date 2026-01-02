@@ -1,9 +1,14 @@
 // Data - Advanced Product DTOs
+import { BatchNumbersDto } from './batch-numbers.dto';
+
 export interface AdvancedProductLineDto {
+  docEntry?: number;
   quantity: number;
   itemCode?: string | null;
   lineNum?: number;
   baseEntry?: number;
+  warehouseCode?: string | null;
+  batchNumbers?: BatchNumbersDto[];
 }
 
 export interface AdvancedProductDto {
@@ -18,7 +23,10 @@ export interface AdvancedProductDto {
 export interface CreateAdvancedProductLineDto {
   Quantity: number;
   ItemCode?: string;
-  BaseEntry: number;
+  BaseEntry: number | null;
+  BaseLine?: number;
+  BaseType?: number | null;
+  BatchNumbers?: BatchNumbersDto[];
 }
 
 export interface CreateAdvancedProductDto {

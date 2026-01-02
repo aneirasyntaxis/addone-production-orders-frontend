@@ -2,7 +2,7 @@
 import { ProductionOrder, CreateProductionOrder } from '../entities/production-order.entity';
 
 export interface IProductionOrderRepository {
-  getAll(): Promise<ProductionOrder[]>;
+  getAll(documentNumber?: number): Promise<ProductionOrder[]>;
   getById(id: number): Promise<ProductionOrder>;
   getByDocNumber(docNumber: number): Promise<ProductionOrder>;
   getByStatus(status: string): Promise<ProductionOrder[]>;

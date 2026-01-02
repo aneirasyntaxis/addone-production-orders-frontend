@@ -16,9 +16,11 @@ export class AdvancedProductMapper {
   static lineToDomain(dto: AdvancedProductLineDto): AdvancedProductLine {
     return {
       quantity: dto.quantity,
-      itemCode: dto.itemCode,
+      itemCode: dto.itemCode ?? undefined,
       lineNum: dto.lineNum,
       baseEntry: dto.baseEntry,
+      warehouseCode: dto.warehouseCode ?? undefined,
+      batchNumbers: dto.batchNumbers,
     };
   }
 
@@ -26,6 +28,7 @@ export class AdvancedProductMapper {
     return {
       docEntry: dto.docEntry,
       docNum: dto.docNum,
+      docDate: '',
       docDueDate: dto.docDueDate,
       comments: dto.comments,
       journalMemo: dto.journalMemo,
@@ -42,6 +45,9 @@ export class AdvancedProductMapper {
       Quantity: line.quantity,
       ItemCode: line.itemCode,
       BaseEntry: line.baseEntry,
+      BaseLine: line.baseLine,
+      BaseType: line.baseType,
+      BatchNumbers: line.batchNumbers,
     };
   }
 

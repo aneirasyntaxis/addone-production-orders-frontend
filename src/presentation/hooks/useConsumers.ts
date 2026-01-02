@@ -6,13 +6,13 @@ import { logger } from '../../core/logging/logger';
 
 const getAllConsumersUseCase = new GetAllConsumersUseCase(consumerRepository);
 
-export const useConsumers = () => {
+export const useConsumers = (docNumber?: number) => {
   return useQuery({
-    queryKey: ['consumers'],
+    queryKey: ['consumers', docNumber],
     queryFn: async () => {
       try {
-        logger.info('Fetching consumers...');
-        const result = await getAllConsumersUseCase.execute();
+        logger.info('Fetching consumers...', { docNumber });
+        const result = await getAllConsumersUseCase.execute(docNumber);
         logger.info('Consumers fetched successfully', {
           count: result.length,
         });

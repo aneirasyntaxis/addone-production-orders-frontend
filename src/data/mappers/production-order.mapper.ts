@@ -15,11 +15,15 @@ import {
 export class ProductionOrderMapper {
   static lineToDomain(dto: ProductionOrderLineDto): ProductionOrderLine {
     return {
-      itemNo: dto.itemNo,
+      itemNo: dto.itemNo ?? null,
+      itemName: dto.itemName,
       lineNumber: dto.lineNumber,
       baseQuantity: dto.baseQuantity,
       plannedQuantity: dto.plannedQuantity,
       issuedQuantity: dto.issuedQuantity,
+      additionalQuantity: dto.additionalQuantity,
+      warehouse: dto.warehouse,
+      itemType: dto.itemType,
       productionOrderIssueType: dto.productionOrderIssueType,
     };
   }
@@ -30,9 +34,14 @@ export class ProductionOrderMapper {
       productionOrderStatus: dto.productionOrderStatus,
       documentNumber: dto.documentNumber,
       absoluteEntry: dto.absoluteEntry,
+      startDate: dto.startDate ?? '',
       dueDate: dto.dueDate,
+      creationDate: dto.creationDate,
       itemNo: dto.itemNo,
       plannedQuantity: dto.plannedQuantity,
+      completedQuantity: dto.completedQuantity,
+      rejectedQuantity: dto.rejectedQuantity,
+      warehouse: dto.warehouse,
       postingDate: dto.postingDate,
       journalRemarks: dto.journalRemarks,
       remarks: dto.remarks,
@@ -52,6 +61,7 @@ export class ProductionOrderMapper {
       BaseQuantity: line.baseQuantity,
       PlannedQuantity: line.plannedQuantity,
       ProductionOrderIssueType: line.productionOrderIssueType,
+      ItemType: line.itemType,
     };
   }
 

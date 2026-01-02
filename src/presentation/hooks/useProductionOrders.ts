@@ -8,13 +8,13 @@ const getAllProductionOrdersUseCase = new GetAllProductionOrdersUseCase(
   productionOrderRepository
 );
 
-export const useProductionOrders = () => {
+export const useProductionOrders = (documentNumber?: number) => {
   return useQuery({
-    queryKey: ['production-orders'],
+    queryKey: ['production-orders', documentNumber],
     queryFn: async () => {
       try {
-        logger.info('Fetching production orders...');
-        const result = await getAllProductionOrdersUseCase.execute();
+        logger.info('Fetching production orders...', { documentNumber });
+        const result = await getAllProductionOrdersUseCase.execute(documentNumber);
         logger.info('Production orders fetched successfully', {
           count: result.length,
         });

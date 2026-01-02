@@ -5,3 +5,5 @@ export * from './get-session.usecase';
 export * from './logout.usecase';
 export * from './get-all-production-orders.usecase';
 export * from './create-production-order.usecase';
+export * from './create-advanced-product.usecase';
+export * from './create-consumer.usecase';

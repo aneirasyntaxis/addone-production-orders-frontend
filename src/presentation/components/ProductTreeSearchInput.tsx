@@ -51,14 +51,14 @@ export const ProductTreeSearchInput: React.FC<ProductTreeSearchInputProps> = ({
 
   const handleSelectTree = (tree: ProductTree) => {
     setSelectedTree(tree);
-    setSearchText(tree.productDescription || tree.treeCode);
+    setSearchText('');
     setShowDropdown(false);
     onSelectProductTree(tree);
   };
 
   const displayValue = selectedTree 
     ? `${selectedTree.treeCode} - ${selectedTree.productDescription || ''}` 
-    : value || searchText;
+    : searchText;
 
   return (
     <View style={styles.container}>

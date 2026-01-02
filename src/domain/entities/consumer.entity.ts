@@ -1,4 +1,6 @@
 // Domain - Consumer Entity (Consumo)
+import { BatchNumbers } from './batch-numbers.entity';
+
 export interface ConsumerLine {
   baseLine?: number;
   baseEntry?: number;
@@ -7,6 +9,7 @@ export interface ConsumerLine {
   itemCode?: string;
   itemDescription?: string;
   warehouseCode?: string;
+  batchNumbers?: BatchNumbers[];
 }
 
 export interface Consumer {
@@ -24,13 +27,15 @@ export interface Consumer {
 }
 
 export interface CreateConsumerLine {
-  baseLine: number;
-  baseEntry: number;
   quantity: number;
+  itemCode?: string;
+  baseEntry: number | null;
+  baseLine?: number;
+  baseType?: number;
 }
 
 export interface CreateConsumer {
-  docDate?: string;
+  docDueDate: string;
   comments: string;
   journalMemo: string;
   documentLines: CreateConsumerLine[];

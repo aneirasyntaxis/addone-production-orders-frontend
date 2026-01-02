@@ -7,6 +7,7 @@ import {
   FlatList,
   RefreshControl,
   TouchableOpacity,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -26,7 +27,18 @@ import { logger } from '../../core/logging/logger';
 
 export const ConsumersScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { data: consumers, isLoading, error, refetch, isRefetching } = useConsumers();
+  const [searchText, setSearchText] = React.useState('');
+  const [searchNumber, setSearchNumber] = React.useState<number | undefined>(undefined);
+  const { data: consumers, isLoading, error, refetch, isRefetching } = useConsumers(searchNumber);
+
+  // Debounce search - búsqueda automática después de 850ms de inactividad
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      handleSearch();
+    }, 850);
+
+    return () => clearTimeout(timer);
+  }, [searchText]);
 
   // Log errors to console when they occur
   React.useEffect(() => {
@@ -45,12 +57,25 @@ export const ConsumersScreen: React.FC = () => {
 
   const handleCreateConsumption = () => {
     logger.info('ConsumersScreen: Create consumption button pressed');
-    // TODO: Navigate to create consumption screen
-    Toast.show({
-      type: 'info',
-      text1: 'Crear Consumo',
-      text2: 'Función en desarrollo',
-    });
+    navigation.navigate('CreateConsumer');
+  };
+
+  const handleSearch = () => {
+    const numericValue = searchText.trim() === '' ? undefined : parseInt(searchText, 10);
+    if (searchText.trim() !== '' && isNaN(numericValue!)) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Por favor ingrese solo números',
+      });
+      return;
+    }
+    setSearchNumber(numericValue);
+  };
+
+  const handleClearSearch = () => {
+    setSearchText('');
+    setSearchNumber(undefined);
   };
 
   const renderConsumerItem = ({ item }: { item: Consumer }) => (
@@ -61,7 +86,7 @@ export const ConsumersScreen: React.FC = () => {
       <Card style={styles.consumerCard}>
       <View style={styles.consumerHeader}>
         <View style={styles.consumerHeaderLeft}>
-          <Text style={styles.consumerNumber}>Consumo #{item.docNum}</Text>
+          <Text style={styles.consumerNumber}>Salida #{item.docNum}</Text>
           <Text style={styles.docEntry}>ID: {item.docEntry}</Text>
         </View>
       </View>
@@ -98,7 +123,7 @@ export const ConsumersScreen: React.FC = () => {
   );  if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <Header title="Consumos" subtitle="Materiales Consumidos" variant="accent" />
+        <Header title="Salidas" subtitle="Salidas de mercancías" variant="accent" />
         <View style={styles.listContainer}>
           <SkeletonCard />
           <SkeletonCard />
@@ -123,7 +148,24 @@ export const ConsumersScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header title="Consumos" subtitle="Materiales Consumidos" variant="accent" />
+      <Header title="Salidas" subtitle="Salidas de mercancías" variant="accent" />
+      
+      {/* Search Input */}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Buscar por número de salida"
+          placeholderTextColor={theme.colors.textSecondary}
+          value={searchText}
+          onChangeText={setSearchText}
+          keyboardType="numeric"
+        />
+        {searchText !== '' && (
+          <TouchableOpacity onPress={handleClearSearch} style={styles.clearButton}>
+            <Text style={styles.clearButtonText}>✕</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* Consumers List */}
       <FlatList
@@ -137,8 +179,8 @@ export const ConsumersScreen: React.FC = () => {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>📦</Text>
-            <Text style={styles.emptyText}>No hay consumos registrados</Text>
-            <Text style={styles.emptySubtext}>Los consumos creados aparecerán aquí</Text>
+            <Text style={styles.emptyText}>No hay salidas registradas</Text>
+            <Text style={styles.emptySubtext}>Las salidas creadas aparecerán aquí</Text>
           </View>
         }
       />
@@ -155,6 +197,42 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.surface,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+    backgroundColor: theme.colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  searchInput: {
+    flex: 1,
+    height: 44,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: theme.spacing.md,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.text,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  clearButton: {
+    position: 'absolute',
+    right: theme.spacing.md + theme.spacing.sm,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.textSecondary,
+    borderRadius: 12,
+  },
+  clearButtonText: {
+    color: theme.colors.background,
+    fontSize: theme.fontSize.sm,
+    fontWeight: 'bold',
   },
   header: {
     flexDirection: 'row',

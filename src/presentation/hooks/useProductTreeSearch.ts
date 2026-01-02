@@ -11,7 +11,7 @@ export const useProductTreeSearch = (searchTerm: string, maxResults: number = 10
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
-    }, 300);
+    }, 600);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);

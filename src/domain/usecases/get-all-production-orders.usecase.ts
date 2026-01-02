@@ -5,7 +5,7 @@ import { IProductionOrderRepository } from '../repositories/production-order.rep
 export class GetAllProductionOrdersUseCase {
   constructor(private productionOrderRepository: IProductionOrderRepository) {}
 
-  async execute(): Promise<ProductionOrder[]> {
-    return await this.productionOrderRepository.getAll();
+  async execute(documentNumber?: number): Promise<ProductionOrder[]> {
+    return await this.productionOrderRepository.getAll(documentNumber);
   }
 }

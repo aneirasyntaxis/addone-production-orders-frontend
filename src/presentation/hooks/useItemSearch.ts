@@ -15,7 +15,7 @@ export const useItemSearch = (searchTerm: string, maxResults: number = 5) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
-    }, 300);
+    }, 600);
 
     return () => {
       clearTimeout(timer);

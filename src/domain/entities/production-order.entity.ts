@@ -1,10 +1,12 @@
 // Domain - Production Order Entity
 export interface ProductionOrderLine {
   itemNo: string | null;
+  itemName?: string;
   lineNumber?: number;
   baseQuantity: number;
   plannedQuantity?: number;
   issuedQuantity?: number;
+  additionalQuantity?: number;
   productionOrderIssueType?: string | null;
   itemType?: string;
   warehouse?: string;
@@ -18,6 +20,7 @@ export interface ProductionOrder {
   absoluteEntry?: number;
   startDate: string;
   dueDate: string;
+  creationDate?: string;
   itemNo: string;
   plannedQuantity: number;
   completedQuantity?: number;
@@ -37,6 +40,7 @@ export interface CreateProductionOrderLine {
   baseQuantity: number;
   plannedQuantity?: number;
   productionOrderIssueType?: string;
+  itemType?: string;
 }
 
 export interface CreateProductionOrder {

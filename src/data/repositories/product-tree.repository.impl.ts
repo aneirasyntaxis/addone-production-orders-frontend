@@ -61,6 +61,8 @@ export class ProductTreeRepositoryImpl implements IProductTreeRepository {
       itemName: dto.itemName,
       quantity: dto.quantity,
       warehouse: dto.warehouse,
+      issueMethod: dto.issueMethod,
+      itemType: dto.itemType,
     };
   }
 }

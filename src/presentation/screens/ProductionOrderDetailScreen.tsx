@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -19,12 +20,17 @@ import { useProductionOrderById } from '../hooks/useProductionOrderById';
 import { ProductionOrder, ProductionOrderLine } from '../../domain/entities/production-order.entity';
 import { handleError } from '../../core/errors/error-handler';
 import { logger } from '../../core/logging/logger';
+import { ProductionOrderAdvancesTab } from './ProductionOrderAdvancesTab';
+import { ProductionOrderConsumersTab } from './ProductionOrderConsumersTab';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProductionOrderDetail'>;
+
+type TabType = 'info' | 'emisión' | 'recibo';
 
 export const ProductionOrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { id } = route.params;
   const { data: order, isLoading, error, refetch } = useProductionOrderById(id);
+  const [activeTab, setActiveTab] = React.useState<TabType>('info');
 
   React.useEffect(() => {
     if (error) {
@@ -57,6 +63,14 @@ export const ProductionOrderDetailScreen: React.FC<Props> = ({ route, navigation
       default:
         return status || 'N/A';
     }
+  };
+
+  const getProductionTypeText = (type?: string) => {
+    return type?.toLowerCase() === 'bopotstandard' ? 'Estándar' : 'Especial';
+  };
+
+  const getIssueTypeText = (type?: string) => {
+    return type?.toLowerCase() === 'im_manual' ? 'Manual' : 'Notificación';
   };
 
   if (isLoading) {
@@ -101,124 +115,172 @@ export const ProductionOrderDetailScreen: React.FC<Props> = ({ route, navigation
         <Text style={styles.headerTitle}>OF #{order.documentNumber || 'N/A'}</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Status Badge */}
-        <View style={styles.statusContainer}>
-          <View style={[styles.statusBadge, getStatusStyle(order.productionOrderStatus)]}>
-            <Text style={styles.statusText}>{getStatusText(order.productionOrderStatus)}</Text>
+      {activeTab === 'info' && (
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {/* Status Badge */}
+          <View style={styles.statusContainer}>
+            <View style={[styles.statusBadge, getStatusStyle(order.productionOrderStatus)]}>
+              <Text style={styles.statusText}>{getStatusText(order.productionOrderStatus)}</Text>
+            </View>
           </View>
-        </View>
 
-        {/* General Info */}
-        <Card style={styles.card}>
-          <Text style={styles.sectionTitle}>Información General</Text>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Número Documento:</Text>
-            <Text style={styles.value}>{order.documentNumber || 'N/A'}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Producto:</Text>
-            <Text style={styles.value}>{order.itemNo}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Tipo Producción:</Text>
-            <Text style={styles.value}>{order.productionOrderType || 'N/A'}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Origen:</Text>
-            <Text style={styles.value}>{order.productionOrderOrigin || 'N/A'}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Cantidad Planificada:</Text>
-            <Text style={styles.value}>{order.plannedQuantity}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Cantidad Completada:</Text>
-            <Text style={styles.value}>{order.completedQuantity || 0}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Cantidad Rechazada:</Text>
-            <Text style={styles.value}>{order.rejectedQuantity || 0}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Fecha Inicio:</Text>
-            <Text style={styles.value}>
-              {new Date(order.startDate).toLocaleDateString('es-ES')}
-            </Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Fecha Entrega:</Text>
-            <Text style={styles.value}>
-              {new Date(order.dueDate).toLocaleDateString('es-ES')}
-            </Text>
-          </View>
-          {order.postingDate && (
+          {/* General Info */}
+          <Card style={styles.card}>
+            <Text style={styles.sectionTitle}>Información General</Text>
             <View style={styles.infoRow}>
-              <Text style={styles.label}>Fecha Publicación:</Text>
+              <Text style={styles.label}>Número Documento:</Text>
+              <Text style={styles.value}>{order.documentNumber || 'N/A'}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Producto:</Text>
+              <Text style={styles.value}>{order.itemNo}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Tipo Producción:</Text>
+              <Text style={styles.value}>{getProductionTypeText(order.productionOrderType)}</Text>
+            </View>
+            {order.productionOrderOriginEntry && (
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Entrada Origen:</Text>
+                <Text style={styles.value}>{order.productionOrderOriginEntry}</Text>
+              </View>
+            )}
+            {order.productionOrderOriginNumber && (
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Número Origen:</Text>
+                <Text style={styles.value}>{order.productionOrderOriginNumber}</Text>
+              </View>
+            )}
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Cantidad Planificada:</Text>
+              <Text style={styles.value}>{order.plannedQuantity}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Fecha Inicio:</Text>
               <Text style={styles.value}>
-                {new Date(order.postingDate).toLocaleDateString('es-ES')}
+                {order.startDate ? new Date(order.startDate).toLocaleDateString('es-ES') : 'N/A'}
               </Text>
             </View>
-          )}
-          {order.warehouse && (
             <View style={styles.infoRow}>
-              <Text style={styles.label}>Almacén:</Text>
-              <Text style={styles.value}>{order.warehouse}</Text>
+              <Text style={styles.label}>Fecha Entrega:</Text>
+              <Text style={styles.value}>
+                {new Date(order.dueDate).toLocaleDateString('es-ES')}
+              </Text>
             </View>
-          )}
-          {order.customerCode && (
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>Cliente:</Text>
-              <Text style={styles.value}>{order.customerCode}</Text>
-            </View>
-          )}
-          {order.remarks && (
-            <View style={styles.remarksContainer}>
-              <Text style={styles.label}>Observaciones:</Text>
-              <Text style={styles.remarksText}>{order.remarks}</Text>
-            </View>
-          )}
-        </Card>
+            {order.postingDate && (
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Fecha Publicación:</Text>
+                <Text style={styles.value}>
+                  {new Date(order.postingDate).toLocaleDateString('es-ES')}
+                </Text>
+              </View>
+            )}
+            {order.warehouse && (
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Almacén:</Text>
+                <Text style={styles.value}>{order.warehouse}</Text>
+              </View>
+            )}
+            {order.customerCode && (
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Cliente:</Text>
+                <Text style={styles.value}>{order.customerCode}</Text>
+              </View>
+            )}
+            {order.journalRemarks && (
+              <View style={styles.remarksContainer}>
+                <Text style={styles.label}>Comentarios del Diario:</Text>
+                <Text style={styles.remarksText}>{order.journalRemarks}</Text>
+              </View>
+            )}
+            {order.remarks && (
+              <View style={styles.remarksContainer}>
+                <Text style={styles.label}>Observaciones:</Text>
+                <Text style={styles.remarksText}>{order.remarks}</Text>
+              </View>
+            )}
+          </Card>
 
-        {/* Details */}
-        <Card style={styles.card}>
-          <Text style={styles.sectionTitle}>
-            Detalle ({order.productionOrderLines.length})
-          </Text>
-          {order.productionOrderLines.map((line: ProductionOrderLine, index: number) => (
-            <View key={index} style={styles.lineItem}>
-              <View style={styles.lineHeader}>
-                <Text style={styles.lineNumber}>Línea {line.lineNumber}</Text>
-                <Text style={styles.lineType}>{line.itemType || 'N/A'}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.label}>Producto:</Text>
-                <Text style={styles.value}>{line.itemNo || 'N/A'}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.label}>Cantidad Base:</Text>
-                <Text style={styles.value}>{line.baseQuantity || 0}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.label}>Cantidad Planificada:</Text>
-                <Text style={styles.value}>{line.plannedQuantity || 0}</Text>
-              </View>
-              {line.issuedQuantity !== undefined && (
-                <View style={styles.infoRow}>
-                  <Text style={styles.label}>Cantidad Emitida:</Text>
-                  <Text style={styles.value}>{line.issuedQuantity}</Text>
+          {/* Details */}
+          <Card style={styles.card}>
+            <Text style={styles.sectionTitle}>
+              Detalle ({order.productionOrderLines.length})
+            </Text>
+            {order.productionOrderLines.map((line: ProductionOrderLine, index: number) => (
+              <View key={index} style={styles.lineItem}>
+                <View style={styles.lineHeader}>
+                  <Text style={styles.lineNumber}>Línea {line.lineNumber}</Text>
+                  <Text style={styles.lineType}>{getIssueTypeText(line.itemType || line.productionOrderIssueType || undefined)}</Text>
                 </View>
-              )}
-              {line.warehouse && (
                 <View style={styles.infoRow}>
-                  <Text style={styles.label}>Almacén:</Text>
-                  <Text style={styles.value}>{line.warehouse}</Text>
+                  <Text style={styles.label}>Producto:</Text>
+                  <Text style={styles.value}>{line.itemNo || 'N/A'}</Text>
                 </View>
-              )}
-            </View>
-          ))}
-        </Card>
-      </ScrollView>
+                <View style={styles.infoRow}>
+                  <Text style={styles.label}>Cantidad Base:</Text>
+                  <Text style={styles.value}>{line.baseQuantity || 0}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.label}>Cantidad Planificada:</Text>
+                  <Text style={styles.value}>{line.plannedQuantity || 0}</Text>
+                </View>
+                {line.additionalQuantity !== undefined && line.additionalQuantity !== null && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.label}>Cantidad Adicional:</Text>
+                    <Text style={styles.value}>{line.additionalQuantity}</Text>
+                  </View>
+                )}
+                {line.issuedQuantity !== undefined && line.issuedQuantity !== null && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.label}>Cantidad Consumida:</Text>
+                    <Text style={styles.value}>{line.issuedQuantity}</Text>
+                  </View>
+                )}
+                {line.warehouse && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.label}>Almacén:</Text>
+                    <Text style={styles.value}>{line.warehouse}</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+          </Card>
+        </ScrollView>
+      )}
+
+      {activeTab === 'emisión' && (
+        <ProductionOrderConsumersTab productionOrderId={order.absoluteEntry || 0} />
+      )}
+
+      {activeTab === 'recibo' && (
+        <ProductionOrderAdvancesTab productionOrderId={order.absoluteEntry || 0} />
+      )}
+
+      {/* Bottom Tab Navigation */}
+      <View style={styles.bottomTabs}>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'info' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('info')}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'info' && styles.tabIconActive]}>📄</Text>
+          <Text style={[styles.tabLabel, activeTab === 'info' && styles.tabLabelActive]}>Info</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'emisión' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('emisión')}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'emisión' && styles.tabIconActive]}>📋</Text>
+          <Text style={[styles.tabLabel, activeTab === 'emisión' && styles.tabLabelActive]}>Emisión</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'recibo' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('recibo')}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'recibo' && styles.tabIconActive]}>📦</Text>
+          <Text style={[styles.tabLabel, activeTab === 'recibo' && styles.tabLabelActive]}>Recibos</Text>
+        </TouchableOpacity>
+      </View>
+
       <Toast />
     </SafeAreaView>
   );
@@ -360,5 +422,46 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     width: '100%',
+  },
+  placeholderText: {
+    fontSize: theme.fontSize.md,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    paddingVertical: theme.spacing.xl,
+    fontStyle: 'italic',
+  },
+  bottomTabs: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.background,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    paddingBottom: 5,
+    height: 60,
+  },
+  tabButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.sm,
+  },
+  tabButtonActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: theme.colors.primary,
+  },
+  tabIcon: {
+    fontSize: 24,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs / 2,
+  },
+  tabIconActive: {
+    color: theme.colors.primary,
+  },
+  tabLabel: {
+    fontSize: theme.fontSize.xs,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+  },
+  tabLabelActive: {
+    color: theme.colors.primary,
   },
 });

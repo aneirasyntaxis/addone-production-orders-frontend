@@ -4,8 +4,9 @@ import { ConsumerDto, CreateConsumerDto } from '../dtos/consumer.dto';
 import { ApiResponse } from '../dtos/company.dto';
 
 export class ConsumerApi {
-  async getAll(): Promise<ConsumerDto[]> {
-    const response = await apiClient.get<ApiResponse<ConsumerDto[]>>('/consumers');
+  async getAll(docNumber?: number): Promise<ConsumerDto[]> {
+    const params = docNumber ? `?docNumber=${docNumber}` : '';
+    const response = await apiClient.get<ApiResponse<ConsumerDto[]>>(`/consumers${params}`);
 
     if (!response.isSuccess || !response.data) {
       throw new Error(response.message || 'Error al obtener los consumos');
@@ -31,6 +32,18 @@ export class ConsumerApi {
 
     if (!response.isSuccess || !response.data) {
       throw new Error(response.message || 'Error al obtener el consumo');
+    }
+
+    return response.data;
+  }
+
+  async getByProductionOrderId(productionOrderId: number): Promise<ConsumerDto[]> {
+    const response = await apiClient.get<ApiResponse<ConsumerDto[]>>(
+      `/consumers/by-of/${productionOrderId}`
+    );
+
+    if (!response.isSuccess || !response.data) {
+      throw new Error(response.message || 'Error al obtener los consumos de la orden de fabricación');
     }
 
     return response.data;

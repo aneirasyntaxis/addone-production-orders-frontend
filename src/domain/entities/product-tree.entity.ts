@@ -4,6 +4,8 @@ export interface ProductTreeLine {
   itemName: string;
   quantity: number;
   warehouse: string;
+  itemType: string;
+  issueMethod?: string;
 }
 
 export interface ProductTree {

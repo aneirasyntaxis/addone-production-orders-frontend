@@ -5,8 +5,8 @@ import { consumerApi } from '../api/consumer.api';
 import { ConsumerMapper } from '../mappers/consumer.mapper';
 
 export class ConsumerRepository implements IConsumerRepository {
-  async getAll(): Promise<Consumer[]> {
-    const dtos = await consumerApi.getAll();
+  async getAll(docNumber?: number): Promise<Consumer[]> {
+    const dtos = await consumerApi.getAll(docNumber);
     return ConsumerMapper.toDomainList(dtos);
   }
 
@@ -18,6 +18,11 @@ export class ConsumerRepository implements IConsumerRepository {
   async getByDocNumber(docNumber: number): Promise<Consumer> {
     const dto = await consumerApi.getByDocNumber(docNumber);
     return ConsumerMapper.toDomain(dto);
+  }
+
+  async getByProductionOrderId(productionOrderId: number): Promise<Consumer[]> {
+    const dtos = await consumerApi.getByProductionOrderId(productionOrderId);
+    return ConsumerMapper.toDomainList(dtos);
   }
 
   async getByOT(ot: string): Promise<Consumer[]> {

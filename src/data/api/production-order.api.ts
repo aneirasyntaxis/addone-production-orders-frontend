@@ -4,9 +4,10 @@ import { ProductionOrderDto, CreateProductionOrderDto } from '../dtos/production
 import { ApiResponse } from '../dtos/company.dto';
 
 export class ProductionOrderApi {
-  async getAll(): Promise<ProductionOrderDto[]> {
+  async getAll(documentNumber?: number): Promise<ProductionOrderDto[]> {
+    const params = documentNumber ? `?documentNumber=${documentNumber}` : '';
     const response = await apiClient.get<ApiResponse<ProductionOrderDto[]>>(
-      '/production-orders'
+      `/production-orders${params}`
     );
 
     if (!response.isSuccess || !response.data) {
