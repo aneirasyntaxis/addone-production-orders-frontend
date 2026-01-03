@@ -11,14 +11,14 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://app.bem.cl:8070/api"
+        "EXPO_PUBLIC_API_BASE_URL": "https://addone.syntaxis.cl/api"
       },
       "prebuildCommand": "bash eas-build-pre-install.sh"
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://app.bem.cl:8070/api"
+        "EXPO_PUBLIC_API_BASE_URL": "https://addone.syntaxis.cl/api"
       }
     }
   },
