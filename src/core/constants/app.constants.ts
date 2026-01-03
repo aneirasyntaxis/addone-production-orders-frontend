@@ -1,7 +1,7 @@
 // Core - Constants
 export const API_CONFIG = {
   BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL || 'https://localhost:7023/api',
-  TIMEOUT: 30000,
+  TIMEOUT: 60000, // Aumentado a 60s
 } as const;
 
 export const STORAGE_KEYS = {

@@ -8,6 +8,7 @@ export class ApiClient {
   private client: AxiosInstance;
 
   constructor(baseURL: string = API_CONFIG.BASE_URL) {
+    logger.info(`🔌 Initializing ApiClient with Base URL: ${baseURL}`);
     this.client = axios.create({
       baseURL,
       timeout: API_CONFIG.TIMEOUT,
@@ -23,11 +24,14 @@ export class ApiClient {
     // Request interceptor
     this.client.interceptors.request.use(
       (config) => {
+        const fullUrl = `${config.baseURL || ''}${config.url}`;
         logger.logApiRequest(
           config.method?.toUpperCase() || 'UNKNOWN',
-          config.url || '',
+          fullUrl, // Logueamos la URL completa
           config.data
         );
+        // Forzar log en consola nativa también para depuración inmediata
+        console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${fullUrl}`);
         return config;
       },
       (error) => {
@@ -73,13 +77,16 @@ export class ApiClient {
     }
 
     if (error.request) {
-      console.error('❌ Network Error:', {
+      console.error('❌ Network Error (No Response):', {
         message: error.message,
         url: error.config?.url,
+        baseURL: error.config?.baseURL,
+        fullUrl: `${error.config?.baseURL || ''}${error.config?.url}`,
         code: error.code,
+        headers: error.config?.headers,
       });
       return new AppError(
-        'No se pudo conectar con el servidor. Verifica tu conexión a internet.',
+        `No se pudo conectar con el servidor (${error.code}). Verifica tu conexión.`,
         'NETWORK_ERROR'
       );
     }

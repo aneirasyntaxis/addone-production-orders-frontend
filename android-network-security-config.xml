@@ -1,18 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Permitir certificados no confiables solo para desarrollo -->
-    <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">app.bem.cl</domain>
+    <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
             <certificates src="user" />
-        </trust-anchors>
-    </domain-config>
-    
-    <!-- Configuración base -->
-    <base-config cleartextTrafficPermitted="false">
-        <trust-anchors>
-            <certificates src="system" />
         </trust-anchors>
     </base-config>
 </network-security-config>
