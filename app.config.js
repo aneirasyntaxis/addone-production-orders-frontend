@@ -34,32 +34,7 @@ const config = {
     plugins: [
       [
         function withCustomNetworkSecurityConfig(config) {
-          // Primero, copiar el archivo XML
-          config = withDangerousMod(config, [
-            'android',
-            async (config) => {
-              const projectRoot = config.modRequest.projectRoot;
-              const platformProjectRoot = config.modRequest.platformProjectRoot;
-              
-              const sourceFile = path.join(projectRoot, 'android-network-security-config.xml');
-              const targetDir = path.join(platformProjectRoot, 'app', 'src', 'main', 'res', 'xml');
-              const targetFile = path.join(targetDir, 'network_security_config.xml');
-              
-              // Crear directorio si no existe
-              if (!fs.existsSync(targetDir)) {
-                fs.mkdirSync(targetDir, { recursive: true });
-              }
-              
-              // Copiar archivo
-              if (fs.existsSync(sourceFile)) {
-                fs.copyFileSync(sourceFile, targetFile);
-              }
-              
-              return config;
-            },
-          ]);
-
-          // Luego, modificar el AndroidManifest
+          // Modificar el AndroidManifest para usar network_security_config
           config = withAndroidManifest(config, async (config) => {
             const androidManifest = config.modResults.manifest;
 
@@ -72,6 +47,15 @@ const config = {
           });
           
           return config;
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true,
+            "targetSdkVersion": 36
+          }
         }
       ]
     ],

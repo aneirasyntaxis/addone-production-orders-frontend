@@ -12,7 +12,8 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://app.bem.cl:8070/api"
-      }
+      },
+      "prebuildCommand": "bash eas-build-pre-install.sh"
     },
     "production": {
       "autoIncrement": true,
