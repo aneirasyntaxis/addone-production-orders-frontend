@@ -86,8 +86,8 @@ export class ApiClient {
         headers: error.config?.headers,
       });
       return new AppError(
-        `No se pudo conectar con el servidor (${error.code}). Verifica tu conexión.`,
-        'NETWORK_ERROR'
+        error.message || 'No se pudo conectar con el servidor. Verifica tu conexión.',
+        error.code || 'NETWORK_ERROR'
       );
     }
 
