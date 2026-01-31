@@ -10,6 +10,8 @@ export interface ConsumerLineDto {
   baseEntry?: number;
   quantity: number;
   warehouseCode?: string;
+  projectCode?: string;
+  costingCode?: string;
   batchNumbers?: BatchNumbersDto[];
 }
 
@@ -26,7 +28,12 @@ export interface ConsumerDto {
 export interface CreateConsumerLineDto {
   Quantity: number;
   ItemCode?: string;
+  WarehouseCode?: string;
+  ProjectCode?: string;
+  CostingCode?: string;
   BaseEntry: number | null;
+  BaseLine?: number;
+  BaseType?: number;
 }
 
 export interface CreateConsumerDto {

@@ -28,6 +28,8 @@ export class ItemRepositoryImpl implements IItemRepository {
       itemsGroupCode: dto.itemsGroupCode,
       foreignName: dto.foreignName,
       valid: dto.valid,
+      manageBatchNumbers: dto.manageBatchNumbers || false,
+      itemWarehouseInfoCollection: dto.itemWarehouseInfoCollection || [],
     };
   }
 }

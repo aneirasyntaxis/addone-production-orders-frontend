@@ -25,7 +25,7 @@ export const AdvancedProductOutputTab: React.FC<AdvancedProductOutputTabProps> =
   const navigation = useNavigation<NavigationProp>();
 
   const handleCreateOutput = () => {
-    navigation.navigate('CreateConsumer');
+    navigation.navigate('CreateConsumerFromSales');
   };
 
   return (

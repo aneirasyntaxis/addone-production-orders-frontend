@@ -78,7 +78,16 @@ export const LoginScreen: React.FC = () => {
       },
       {
         onSuccess: (session) => {
-          setSession(session);
+          // Add company name to session
+          const selectedCompany = companies?.find((c) => c.code === companyDB);
+          const sessionWithCompany = {
+            ...session,
+            sapToken: {
+              ...session.sapToken,
+              companyName: selectedCompany?.name,
+            },
+          };
+          setSession(sessionWithCompany);
           Toast.show({
             type: 'success',
             text1: 'Inicio de sesión exitoso',

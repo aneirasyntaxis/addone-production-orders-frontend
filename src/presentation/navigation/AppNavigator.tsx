@@ -13,7 +13,9 @@ import { AdvancedProductDetailScreen } from '../screens/AdvancedProductDetailScr
 import { ConsumerDetailScreen } from '../screens/ConsumerDetailScreen';
 import { CreateProductionOrderScreen } from '../screens/CreateProductionOrderScreen';
 import { CreateAdvancedProductScreen } from '../screens/CreateAdvancedProductScreen';
+import { CreateProductionReceiptScreen } from '../screens/CreateProductionReceiptScreen';
 import { CreateConsumerScreen } from '../screens/CreateConsumerScreen';
+import { CreateConsumerFromSalesScreen } from '../screens/CreateConsumerFromSalesScreen';
 import { useAuth } from '../context/AuthContext';
 import { Loading } from '../components/Loading';
 import { Text } from 'react-native';
@@ -86,32 +88,42 @@ export const AppNavigator: React.FC = () => {
             <Stack.Screen 
               name="CreateProductionOrder" 
               component={CreateProductionOrderScreen}
-              options={{ presentation: 'card' }}
+              options={{ presentation: 'card' , title: 'Nueva Orden de Fabricación' }}
             />
             <Stack.Screen 
               name="CreateAdvancedProduct" 
               component={CreateAdvancedProductScreen}
-              options={{ presentation: 'card' }}
+              options={{ presentation: 'card', title: 'Nueva Entrada de Mercancías' }}
+            />
+            <Stack.Screen 
+              name="CreateProductionReceipt" 
+              component={CreateProductionReceiptScreen}
+              options={{ presentation: 'card', title: 'Recibo de Producción' }}
             />
             <Stack.Screen 
               name="CreateConsumer" 
               component={CreateConsumerScreen}
-              options={{ presentation: 'card' }}
+              options={{ presentation: 'card', title: 'Nueva Emisión para Producción' }}
+            />
+            <Stack.Screen 
+              name="CreateConsumerFromSales" 
+              component={CreateConsumerFromSalesScreen}
+              options={{ presentation: 'card', title: 'Nueva Salida de Mercancías' }}
             />
             <Stack.Screen 
               name="ProductionOrderDetail" 
               component={ProductionOrderDetailScreen}
-              options={{ presentation: 'card' }}
+              options={{ presentation: 'card', title: 'Detalle de Orden de Producción' }}
             />
             <Stack.Screen 
               name="AdvancedProductDetail" 
               component={AdvancedProductDetailScreen}
-              options={{ presentation: 'card' }}
+              options={{ presentation: 'card' , title: 'Detalle de Entrada de Mercanías'}}
             />
             <Stack.Screen 
               name="ConsumerDetail" 
               component={ConsumerDetailScreen}
-              options={{ presentation: 'card' }}
+              options={{ presentation: 'card', title:'Detalle de Salida de Mercanías'}}
             />
           </>
         )}

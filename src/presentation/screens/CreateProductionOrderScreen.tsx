@@ -18,8 +18,10 @@ import { Button } from '../components/Button';
 import { ItemSearchInput } from '../components/ItemSearchInput';
 import { ProductTreeSearchInput } from '../components/ProductTreeSearchInput';
 import { DatePickerInput } from '../components/DatePickerInput';
+import { WarehouseSearchInput } from '../components/WarehouseSearchInput';
 import { useCreateProductionOrder } from '../hooks/useCreateProductionOrder';
 import { Item } from '../../domain/entities/item.entity';
+import { Warehouse } from '../../domain/entities/warehouse.entity';
 import { ProductTree } from '../../domain/entities/product-tree.entity';
 import { CreateProductionOrderLine } from '../../domain/entities/production-order.entity';
 import { logger } from '../../core/logging/logger';
@@ -32,10 +34,12 @@ interface ProductionOrderLine {
   id: string;
   itemNo: string;
   itemName: string;
-  baseQuantity: string;
+  //baseQuantity: string;
   plannedQuantity: string;
+  warehouseCode: string;
   productionOrderIssueType: string;
   itemType?: string;
+  lineText?: string;
 }
 
 type IssueMethodDisplay = 'Manual' | 'Notificación';
@@ -53,7 +57,6 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
   const [headerItemNo, setHeaderItemNo] = useState('');
   const [headerItemName, setHeaderItemName] = useState('');
   const [plannedQuantity, setPlannedQuantity] = useState('');
-  const [dueDate, setDueDate] = useState<Date | null>(null);
   const [postingDate, setPostingDate] = useState<Date | null>(null);
   const [remarks, setRemarks] = useState('');
   const [journalRemarks, setJournalRemarks] = useState('');
@@ -84,10 +87,12 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
       id: `${Date.now()}-${index}`,
       itemNo: line.itemCode,
       itemName: line.itemName,
-      baseQuantity: line.quantity.toString(),
-      plannedQuantity: '',
+     // baseQuantity: '',
+      plannedQuantity: line.quantity.toString(),
+      warehouseCode: line.warehouse || '',
       productionOrderIssueType: line.issueMethod || 'im_Manual',
       itemType: line.itemType,
+      lineText: line.lineText || '',
     }));
 
     setLines(newLines);
@@ -106,7 +111,6 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
       setHeaderItemNo('');
       setHeaderItemName('');
       setPlannedQuantity('');
-      setDueDate(null);
       setPostingDate(null);
       setRemarks('');
       setJournalRemarks('');
@@ -152,11 +156,11 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
     }
   };
 
-  const handleDueDateChange = (date: Date) => {
-    setDueDate(date);
+  const handlePostingDateChange = (date: Date) => {
+    setPostingDate(date);
     // Clear error when date is selected
-    if (errors.dueDate) {
-      setErrors({ ...errors, dueDate: '' });
+    if (errors.postingDate) {
+      setErrors({ ...errors, postingDate: '' });
     }
   };
 
@@ -165,8 +169,9 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
       id: Date.now().toString(),
       itemNo: '',
       itemName: '',
-      baseQuantity: '',
+     // baseQuantity: '',
       plannedQuantity: '',
+      warehouseCode: '',
       productionOrderIssueType: 'im_Manual',
     };
     setLines([...lines, newLine]);
@@ -202,11 +207,28 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
     );
   };
 
+  const updateLineWarehouse = (id: string, warehouse: Warehouse) => {
+    setLines(
+      lines.map((line) => (line.id === id ? { ...line, warehouseCode: warehouse.warehouseCode } : line))
+    );
+    // Clear warehouse error when selected
+    if (errors[`line-${id}-warehouse`]) {
+      setErrors({ ...errors, [`line-${id}-warehouse`]: '' });
+    }
+  };
+
+  const clearLineWarehouse = (id: string) => {
+    setLines(
+      lines.map((line) => (line.id === id ? { ...line, warehouseCode: '' } : line))
+    );
+  };
+
   const updateLine = (id: string, field: keyof ProductionOrderLine, value: string) => {
     let validValue = value;
     
     // Validate numeric fields
-    if (field === 'baseQuantity' || field === 'plannedQuantity') {
+    //if (field === 'baseQuantity' || field === 'plannedQuantity') {
+    if (field === 'plannedQuantity') {
       // Only allow numbers and decimal point
       const numericValue = value.replace(/[^0-9.]/g, '');
       // Prevent multiple decimal points
@@ -223,7 +245,7 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
       lines.map((line) => (line.id === id ? { ...line, [field]: validValue } : line))
     );
     // Clear quantity error when valid value is entered
-    if (field === 'baseQuantity' && errors[`line-${id}-quantity`] && validValue && parseFloat(validValue) > 0) {
+    if (field === 'plannedQuantity' && errors[`line-${id}-quantity`] && validValue && parseFloat(validValue) > 0) {
       setErrors({ ...errors, [`line-${id}-quantity`]: '' });
     }
   };
@@ -239,8 +261,8 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
       newErrors.plannedQuantity = 'Ingrese una cantidad válida';
     }
 
-    if (!dueDate) {
-      newErrors.dueDate = 'Seleccione la fecha de entrega';
+    if (!postingDate) {
+      newErrors.postingDate = 'Seleccione la fecha de publicación';
     }
 
     if (lines.length === 0) {
@@ -248,12 +270,33 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
     }
 
     lines.forEach((line, index) => {
-      if (!line.itemNo) {
-        newErrors[`line-${line.id}-item`] = 'Seleccione un producto';
+      // Solo validar itemNo si NO es tipo texto (pit_Text)
+      if (line.itemType !== 'pit_Text') {
+        if (!line.itemNo) {
+          newErrors[`line-${line.id}-item`] = 'Seleccione un producto';
+        }
+        if (!line.warehouseCode) {
+          newErrors[`line-${line.id}-warehouse`] = 'Seleccione un almacén';
+        }
+        if (!line.plannedQuantity || parseFloat(line.plannedQuantity) <= 0) {
+          newErrors[`line-${line.id}-quantity`] = 'Cantidad inválida';
+        }
       }
-      if (!line.baseQuantity || parseFloat(line.baseQuantity) <= 0) {
-        newErrors[`line-${line.id}-quantity`] = 'Cantidad inválida';
-      }
+    });
+
+    console.log('🔍 VALIDACIÓN:', {
+      errores: newErrors,
+      totalErrores: Object.keys(newErrors).length,
+      headerItemNo,
+      plannedQuantity,
+      postingDate,
+      lines: lines.map(l => ({
+        id: l.id,
+        itemNo: l.itemNo,
+        itemType: l.itemType,
+        plannedQuantity: l.plannedQuantity,
+        lineText: l.lineText
+      }))
     });
 
     setErrors(newErrors);
@@ -274,10 +317,12 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
 
     const orderLines: CreateProductionOrderLine[] = lines.map((line) => ({
       itemNo: line.itemNo,
-      baseQuantity: parseFloat(line.baseQuantity),
-      plannedQuantity: line.plannedQuantity ? parseFloat(line.plannedQuantity) : undefined,
-      productionOrderIssueType: line.productionOrderIssueType,
+      baseQuantity: undefined,
+      plannedQuantity: line.itemType === 'pit_Text' ? undefined : parseFloat(line.plannedQuantity),
+      warehouseCode: line.itemType === 'pit_Text' ? undefined : line.warehouseCode,
+      productionOrderIssueType: line.itemType === 'pit_Text' ? undefined : 'im_Manual',
       itemType: line.itemType,
+      lineText: line.itemType === 'pit_Text' ? line.lineText : undefined,
     }));
 
     const formatDateForApi = (date: Date): string => {
@@ -290,13 +335,14 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
     const order = {
       itemNo: headerItemNo,
       plannedQuantity: parseFloat(plannedQuantity),
-      dueDate: formatDateForApi(dueDate!),
-      postingDate: postingDate ? formatDateForApi(postingDate) : undefined,
-      remarks: remarks || undefined,
+      dueDate: formatDateForApi(postingDate!),
+      postingDate: formatDateForApi(postingDate!),
+      remarks: undefined,
       journalRemarks: journalRemarks || undefined,
       productionOrderLines: orderLines,
     };
 
+    console.log('📤 REQUEST A ENVIAR:', JSON.stringify(order, null, 2));
     logger.debug('CreateProductionOrderScreen: Creating order', { order });
 
     createOrder(order, {
@@ -407,39 +453,19 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
           </View>
 
           <DatePickerInput
-            value={dueDate}
-            onChange={handleDueDateChange}
-            label="Fecha de Entrega"
-            placeholder="Seleccionar fecha de entrega"
-            error={errors.dueDate}
-          />
-
-          <DatePickerInput
             value={postingDate}
-            onChange={setPostingDate}
+            onChange={handlePostingDateChange}
             label="Fecha de Publicación"
-            placeholder="Seleccionar fecha (Opcional)"
+            placeholder="Seleccionar fecha de publicación"
+            error={errors.postingDate}
           />
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Observaciones</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={remarks}
-              onChangeText={setRemarks}
-              placeholder="Observaciones generales..."
-              multiline
-              numberOfLines={3}
-              placeholderTextColor={theme.colors.textSecondary}
-            />
-          </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Comentarios</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
-              value={journalRemarks}
-              onChangeText={setJournalRemarks}
+              value={remarks}
+              onChangeText={setRemarks}
               placeholder="Comentarios..."
               multiline
               numberOfLines={3}
@@ -467,101 +493,89 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
           {lines.map((line, index) => (
             <View key={line.id} style={styles.lineCard}>
               <View style={styles.lineHeader}>
-                <Text style={styles.lineTitle}>Material #{index + 1}</Text>
+                <Text style={styles.lineTitle}>
+                  {line.itemType === 'pit_Text' ? `Texto #${index + 1}` : `Material #${index + 1}`}
+                </Text>
                 <TouchableOpacity onPress={() => removeLine(line.id)}>
                   <Text style={styles.removeButton}>✕</Text>
                 </TouchableOpacity>
               </View>
 
-              <ItemSearchInput
-                value={line.itemNo}
-                onSelectItem={(item) => updateLineItem(line.id, item)}
-                onClear={() => clearLineItem(line.id)}
-                label="Producto"
-                placeholder="Buscar producto..."
-                error={errors[`line-${line.id}-item`]}
-              />
+              {line.itemType !== 'pit_Text' && (
+                <>
+                  <ItemSearchInput
+                    value={line.itemNo}
+                    onSelectItem={(item) => updateLineItem(line.id, item)}
+                    onClear={() => clearLineItem(line.id)}
+                    label="Producto"
+                    placeholder="Buscar producto..."
+                    error={errors[`line-${line.id}-item`]}
+                  />
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Nombre</Text>
-                <TextInput
-                  style={[styles.input, styles.inputDisabled]}
-                  value={line.itemName}
-                  editable={false}
-                  placeholder="Nombre del producto"
-                  placeholderTextColor={theme.colors.textSecondary}
-                />
-              </View>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Nombre</Text>
+                    <TextInput
+                      style={[styles.input, styles.inputDisabled]}
+                      value={line.itemName}
+                      editable={false}
+                      placeholder="Nombre del producto"
+                      placeholderTextColor={theme.colors.textSecondary}
+                    />
+                  </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Cantidad Base</Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    errors[`line-${line.id}-quantity`] && styles.inputError,
-                  ]}
-                  value={line.baseQuantity}
-                  onChangeText={(value) => updateLine(line.id, 'baseQuantity', value)}
-                  placeholder="Ej: 10"
-                  keyboardType="numeric"
-                  placeholderTextColor={theme.colors.textSecondary}
-                />
-                {errors[`line-${line.id}-quantity`] && (
-                  <Text style={styles.errorText}>
-                    {errors[`line-${line.id}-quantity`]}
+                  <WarehouseSearchInput
+                    label="Almacén *"
+                    value={line.warehouseCode}
+                    onSelectWarehouse={(warehouse) => updateLineWarehouse(line.id, warehouse)}
+                    onClear={() => clearLineWarehouse(line.id)}
+                    placeholder="Buscar almacén..."
+                    error={errors[`line-${line.id}-warehouse`]}
+                  />
+                </>
+              )}
+
+              {line.itemType === 'pit_Text' ? (
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Texto Libre (máximo 50 caracteres)</Text>
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    value={line.lineText || ''}
+                    onChangeText={(value) => {
+                      if (value.length <= 50) {
+                        updateLine(line.id, 'lineText', value);
+                      }
+                    }}
+                    placeholder="Escriba el texto descriptivo..."
+                    multiline
+                    numberOfLines={3}
+                    maxLength={50}
+                    placeholderTextColor={theme.colors.textSecondary}
+                  />
+                  <Text style={styles.characterCount}>
+                    {(line.lineText || '').length}/50
                   </Text>
-                )}
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Cantidad Planificada</Text>
-                <TextInput
-                  style={styles.input}
-                  value={line.plannedQuantity}
-                  onChangeText={(value) => updateLine(line.id, 'plannedQuantity', value)}
-                  placeholder="Opcional"
-                  keyboardType="numeric"
-                  placeholderTextColor={theme.colors.textSecondary}
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Tipo de Emisión</Text>
-                <View style={styles.issueTypeSelector}>
-                  <TouchableOpacity
-                    style={[
-                      styles.issueTypeButton,
-                      line.productionOrderIssueType === 'im_Manual' && styles.issueTypeButtonActive,
-                    ]}
-                    onPress={() => updateLine(line.id, 'productionOrderIssueType', 'im_Manual')}
-                  >
-                    <Text
-                      style={[
-                        styles.issueTypeButtonText,
-                        line.productionOrderIssueType === 'im_Manual' && styles.issueTypeButtonTextActive,
-                      ]}
-                    >
-                      Manual
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.issueTypeButton,
-                      line.productionOrderIssueType === 'im_Backflush' && styles.issueTypeButtonActive,
-                    ]}
-                    onPress={() => updateLine(line.id, 'productionOrderIssueType', 'im_Backflush')}
-                  >
-                    <Text
-                      style={[
-                        styles.issueTypeButtonText,
-                        line.productionOrderIssueType === 'im_Backflush' && styles.issueTypeButtonTextActive,
-                      ]}
-                    >
-                      Notificación
-                    </Text>
-                  </TouchableOpacity>
                 </View>
-              </View>
+              ) : (
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Cantidad Planificada</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      errors[`line-${line.id}-quantity`] && styles.inputError,
+                    ]}
+                    value={line.plannedQuantity}
+                    onChangeText={(value) => updateLine(line.id, 'plannedQuantity', value)}
+                    placeholder="Ej: 10"
+                    keyboardType="numeric"
+                    placeholderTextColor={theme.colors.textSecondary}
+                  />
+                  {errors[`line-${line.id}-quantity`] && (
+                    <Text style={styles.errorText}>
+                      {errors[`line-${line.id}-quantity`]}
+                    </Text>
+                  )}
+                </View>
+              )}
             </View>
           ))}
 
@@ -706,7 +720,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   inputGroup: {
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
   label: {
     fontSize: theme.fontSize.sm,
@@ -741,11 +755,17 @@ const styles = StyleSheet.create({
     color: theme.colors.error,
     marginTop: theme.spacing.xs,
   },
+  characterCount: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
+    textAlign: 'right',
+  },
   lineCard: {
     backgroundColor: theme.colors.surface,
-    padding: theme.spacing.md,
+    padding: theme.spacing.sm,
     borderRadius: theme.borderRadius.md,
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
@@ -753,7 +773,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
     paddingBottom: theme.spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
@@ -780,31 +800,5 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: theme.spacing.md,
-  },
-  issueTypeSelector: {
-    flexDirection: 'row',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.borderRadius.md,
-    overflow: 'hidden',
-  },
-  issueTypeButton: {
-    flex: 1,
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    backgroundColor: theme.colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  issueTypeButtonActive: {
-    backgroundColor: theme.colors.primary,
-  },
-  issueTypeButtonText: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: '600',
-    color: theme.colors.text,
-  },
-  issueTypeButtonTextActive: {
-    color: theme.colors.background,
   },
 });

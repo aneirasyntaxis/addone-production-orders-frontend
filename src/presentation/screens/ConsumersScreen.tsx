@@ -57,7 +57,7 @@ export const ConsumersScreen: React.FC = () => {
 
   const handleCreateConsumption = () => {
     logger.info('ConsumersScreen: Create consumption button pressed');
-    navigation.navigate('CreateConsumer');
+    navigation.navigate('CreateConsumerFromSales');
   };
 
   const handleSearch = () => {
@@ -87,7 +87,10 @@ export const ConsumersScreen: React.FC = () => {
       <View style={styles.consumerHeader}>
         <View style={styles.consumerHeaderLeft}>
           <Text style={styles.consumerNumber}>Salida #{item.docNum}</Text>
-          <Text style={styles.docEntry}>ID: {item.docEntry}</Text>
+        </View>
+        <View style={styles.consumerHeaderRight}>
+          <Text style={styles.linesCount}>📦 {item.documentLines.length}</Text>
+          <Text style={styles.linesLabel}>{item.documentLines.length === 1 ? 'Producto' : 'Productos'}</Text>
         </View>
       </View>
 
@@ -96,7 +99,7 @@ export const ConsumersScreen: React.FC = () => {
           <View style={styles.consumerRow}>
             <Text style={styles.consumerLabel}>Fecha:</Text>
             <Text style={styles.consumerValue}>
-              {new Date(item.docDate).toLocaleDateString('es-ES')}
+              {item.docDate.split('-').reverse().join('/')}
             </Text>
           </View>
         )}
@@ -112,11 +115,6 @@ export const ConsumersScreen: React.FC = () => {
             <Text style={styles.consumerValue}>{item.journalMemo}</Text>
           </View>
         )}
-        <View style={styles.linesInfo}>
-          <Text style={styles.linesText}>
-            📦 {item.documentLines.length} líneas de consumo
-          </Text>
-        </View>
         </View>
       </Card>
     </TouchableOpacity>
@@ -272,6 +270,9 @@ const styles = StyleSheet.create({
   consumerHeaderLeft: {
     flex: 1,
   },
+  consumerHeaderRight: {
+    alignItems: 'flex-end',
+  },
   consumerNumber: {
     fontSize: theme.fontSize.lg,
     fontWeight: 'bold',
@@ -304,15 +305,15 @@ const styles = StyleSheet.create({
     flex: 2,
     textAlign: 'right',
   },
-  linesInfo: {
-    marginTop: theme.spacing.sm,
-    paddingTop: theme.spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+  linesCount: {
+    fontSize: theme.fontSize.md,
+    fontWeight: 'bold',
+    color: theme.colors.text,
   },
-  linesText: {
-    fontSize: theme.fontSize.sm,
+  linesLabel: {
+    fontSize: theme.fontSize.xs,
     color: theme.colors.textSecondary,
+    marginTop: 2,
   },
   emptyContainer: {
     flex: 1,

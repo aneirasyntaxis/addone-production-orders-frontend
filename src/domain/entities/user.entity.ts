@@ -14,6 +14,7 @@ export interface SapToken {
   version: string;
   expiresAt: Date;
   companyDB: string;
+  companyName?: string;
   sessionTimeoutMinutes: number;
   isActive: boolean;
 }

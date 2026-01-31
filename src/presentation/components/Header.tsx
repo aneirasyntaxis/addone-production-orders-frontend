@@ -69,14 +69,22 @@ export const Header: React.FC<HeaderProps> = ({
           </View>
         </View>
 
-        <TouchableOpacity
-          onPress={() => setMenuVisible(true)}
-          style={styles.avatarButton}
-        >
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getInitials()}</Text>
-          </View>
-        </TouchableOpacity>
+        <View style={styles.rightSection}>
+          {session?.sapToken?.companyName && (
+            <View style={styles.companyContainer}>
+              <Text style={styles.companyLabel}>Empresa</Text>
+              <Text style={styles.companyName}>{session.sapToken.companyName}</Text>
+            </View>
+          )}
+          <TouchableOpacity
+            onPress={() => setMenuVisible(true)}
+            style={styles.avatarButton}
+          >
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{getInitials()}</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Dropdown Menu */}
@@ -157,6 +165,25 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.sm,
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 4,
+  },
+  rightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  companyContainer: {
+    alignItems: 'flex-end',
+  },
+  companyLabel: {
+    fontSize: theme.fontSize.xs,
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontWeight: '500',
+  },
+  companyName: {
+    fontSize: theme.fontSize.sm,
+    color: '#ffffff',
+    fontWeight: '600',
+    marginTop: 2,
   },
   avatarButton: {
     padding: 4,

@@ -25,6 +25,7 @@ export class ProductionOrderMapper {
       warehouse: dto.warehouse,
       itemType: dto.itemType,
       productionOrderIssueType: dto.productionOrderIssueType,
+      lineText: dto.lineText,
     };
   }
 
@@ -32,6 +33,7 @@ export class ProductionOrderMapper {
     return {
       productionOrderType: dto.productionOrderType,
       productionOrderStatus: dto.productionOrderStatus,
+      productDescription: dto.productDescription,
       documentNumber: dto.documentNumber,
       absoluteEntry: dto.absoluteEntry,
       startDate: dto.startDate ?? '',
@@ -58,10 +60,11 @@ export class ProductionOrderMapper {
   static lineToDto(line: CreateProductionOrderLine): CreateProductionOrderLineDto {
     return {
       ItemNo: line.itemNo,
-      BaseQuantity: line.baseQuantity,
+      // BaseQuantity: line.baseQuantity,
       PlannedQuantity: line.plannedQuantity,
       ProductionOrderIssueType: line.productionOrderIssueType,
       ItemType: line.itemType,
+      LineText: line.lineText,
     };
   }
 

@@ -44,6 +44,8 @@ export class AdvancedProductMapper {
     return {
       Quantity: line.quantity,
       ItemCode: line.itemCode,
+      ProjectCode: line.projectCode,
+      CostingCode: line.costingCode,
       BaseEntry: line.baseEntry,
       BaseLine: line.baseLine,
       BaseType: line.baseType,

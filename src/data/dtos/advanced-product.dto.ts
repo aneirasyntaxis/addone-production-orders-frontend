@@ -23,6 +23,8 @@ export interface AdvancedProductDto {
 export interface CreateAdvancedProductLineDto {
   Quantity: number;
   ItemCode?: string;
+  ProjectCode?: string;
+  CostingCode?: string;
   BaseEntry: number | null;
   BaseLine?: number;
   BaseType?: number | null;

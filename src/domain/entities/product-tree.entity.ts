@@ -6,6 +6,7 @@ export interface ProductTreeLine {
   warehouse: string;
   itemType: string;
   issueMethod?: string;
+  lineText?: string;
 }
 
 export interface ProductTree {

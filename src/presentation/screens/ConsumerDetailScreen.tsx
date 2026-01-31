@@ -98,7 +98,7 @@ export const ConsumerDetailScreen: React.FC<Props> = ({ route, navigation }) => 
             <View style={styles.infoRow}>
               <Text style={styles.label}>Fecha Documento:</Text>
               <Text style={styles.value}>
-                {new Date(consumer.docDate).toLocaleDateString('es-ES')}
+                {consumer.docDate.split('-').reverse().join('/')}
               </Text>
             </View>
           )}
@@ -106,7 +106,7 @@ export const ConsumerDetailScreen: React.FC<Props> = ({ route, navigation }) => 
             <View style={styles.infoRow}>
               <Text style={styles.label}>Fecha Vencimiento:</Text>
               <Text style={styles.value}>
-                {new Date(consumer.docDueDate).toLocaleDateString('es-ES')}
+                {consumer.docDueDate.split('-').reverse().join('/')}
               </Text>
             </View>
           )}
@@ -114,7 +114,7 @@ export const ConsumerDetailScreen: React.FC<Props> = ({ route, navigation }) => 
             <View style={styles.infoRow}>
               <Text style={styles.label}>Fecha Impuesto:</Text>
               <Text style={styles.value}>
-                {new Date(consumer.taxDate).toLocaleDateString('es-ES')}
+                {consumer.taxDate.split('-').reverse().join('/')}
               </Text>
             </View>
           )}
@@ -131,15 +131,15 @@ export const ConsumerDetailScreen: React.FC<Props> = ({ route, navigation }) => 
             </View>
           )}
           {consumer.comments && (
-            <View style={styles.remarksContainer}>
+            <View style={styles.infoRow}>
               <Text style={styles.label}>Comentarios:</Text>
-              <Text style={styles.remarksText}>{consumer.comments}</Text>
+              <Text style={styles.value}>{consumer.comments}</Text>
             </View>
           )}
           {consumer.journalMemo && (
-            <View style={styles.remarksContainer}>
-              <Text style={styles.label}>Comentarios:</Text>
-              <Text style={styles.remarksText}>{consumer.journalMemo}</Text>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Memo:</Text>
+              <Text style={styles.value}>{consumer.journalMemo}</Text>
             </View>
           )}
         </Card>
@@ -152,7 +152,7 @@ export const ConsumerDetailScreen: React.FC<Props> = ({ route, navigation }) => 
           {consumer.documentLines.map((line: ConsumerLine, index: number) => (
             <View key={index} style={styles.lineItem}>
               <View style={styles.lineHeader}>
-                <Text style={styles.lineNumber}>Línea {line.lineNumber}</Text>
+                <Text style={styles.lineNumber}>Línea {index + 1}</Text>
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.label}>Código Producto:</Text>
@@ -172,6 +172,24 @@ export const ConsumerDetailScreen: React.FC<Props> = ({ route, navigation }) => 
                 <View style={styles.infoRow}>
                   <Text style={styles.label}>Almacén:</Text>
                   <Text style={styles.value}>{line.warehouseCode}</Text>
+                </View>
+              )}
+              {line.accountCode && (
+                <View style={styles.infoRow}>
+                  <Text style={styles.label}>Cuenta:</Text>
+                  <Text style={styles.value}>{line.accountCode}</Text>
+                </View>
+              )}
+              {line.costingCode && (
+                <View style={styles.infoRow}>
+                  <Text style={styles.label}>Cuartel:</Text>
+                  <Text style={styles.value}>{line.costingCode}</Text>
+                </View>
+              )}
+              {line.projectCode && (
+                <View style={styles.infoRow}>
+                  <Text style={styles.label}>Proyecto:</Text>
+                  <Text style={styles.value}>{line.projectCode}</Text>
                 </View>
               )}
             </View>

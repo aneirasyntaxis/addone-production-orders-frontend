@@ -22,6 +22,8 @@ export class ConsumerMapper {
       itemCode: dto.itemCode ?? undefined,
       itemDescription: dto.itemDescription ?? undefined,
       warehouseCode: dto.warehouseCode ?? undefined,
+      projectCode: dto.projectCode ?? undefined,
+      costingCode: dto.costingCode ?? undefined,
       batchNumbers: dto.batchNumbers,
     };
   }
@@ -46,7 +48,12 @@ export class ConsumerMapper {
     return {
       Quantity: line.quantity,
       ItemCode: line.itemCode,
+      WarehouseCode: line.warehouseCode,
+      ProjectCode: line.projectCode,
+      CostingCode: line.costingCode,
       BaseEntry: line.baseEntry,
+      BaseLine: line.baseLine,
+      BaseType: line.baseType,
     };
   }
 

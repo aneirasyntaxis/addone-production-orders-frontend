@@ -9,15 +9,18 @@ import { Card } from '../components/Card';
 import { FAB } from '../components/FAB';
 import { useAdvancedProductsByProductionOrder } from '../hooks/useAdvancedProductsByProductionOrder';
 import { AdvancedProduct } from '../../domain/entities/advanced-product.entity';
+import { ProductionOrder } from '../../domain/entities/production-order.entity';
 import { handleError } from '../../core/errors/error-handler';
 import { logger } from '../../core/logging/logger';
 
 interface ProductionOrderAdvancesTabProps {
   productionOrderId: number;
+  productionOrder?: ProductionOrder;
 }
 
 export const ProductionOrderAdvancesTab: React.FC<ProductionOrderAdvancesTabProps> = ({
   productionOrderId,
+  productionOrder,
 }) => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const {
@@ -44,9 +47,23 @@ export const ProductionOrderAdvancesTab: React.FC<ProductionOrderAdvancesTabProp
     }
   }, [advances, productionOrderId]);
 
+  // Verificar si aún hay cantidad disponible para recibir
+  const hasAvailableQuantity = React.useMemo(() => {
+    if (!productionOrder) return true; // Si no hay orden, mostrar botón por defecto
+    
+    const plannedQuantity = productionOrder.plannedQuantity || 0;
+    const receivedQuantity = advances?.reduce((sum, receipt) => {
+      // Sum quantities from all receipt lines
+      const receiptTotal = receipt.documentLines.reduce((lineSum, line) => lineSum + line.quantity, 0);
+      return sum + receiptTotal;
+    }, 0) || 0;
+    
+    return receivedQuantity < plannedQuantity;
+  }, [productionOrder, advances]);
+
   const handleCreateAdvance = () => {
     logger.info('Create advance button pressed', { productionOrderId });
-    navigation.navigate('CreateAdvancedProduct', { productionOrderId });
+    navigation.navigate('CreateProductionReceipt', { productionOrderId });
   };
 
   const renderAdvanceItem = ({ item }: { item: AdvancedProduct }) => (
@@ -141,7 +158,7 @@ export const ProductionOrderAdvancesTab: React.FC<ProductionOrderAdvancesTabProp
           </View>
         }
       />
-      <FAB onPress={handleCreateAdvance} />
+      {hasAvailableQuantity && <FAB onPress={handleCreateAdvance} />}
     </View>
   );
 };

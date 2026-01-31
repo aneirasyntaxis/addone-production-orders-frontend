@@ -10,11 +10,13 @@ export interface ProductionOrderLine {
   productionOrderIssueType?: string | null;
   itemType?: string;
   warehouse?: string;
+  lineText?: string;
 }
 
 export interface ProductionOrder {
   productionOrderType: string;
   productionOrderStatus?: string;
+  productDescription?: string;
   productionOrderOrigin?: string;
   documentNumber?: number;
   absoluteEntry?: number;
@@ -37,10 +39,11 @@ export interface ProductionOrder {
 
 export interface CreateProductionOrderLine {
   itemNo: string;
-  baseQuantity: number;
+  baseQuantity?: number;
   plannedQuantity?: number;
   productionOrderIssueType?: string;
   itemType?: string;
+  lineText?: string;
 }
 
 export interface CreateProductionOrder {

@@ -9,6 +9,9 @@ export interface ConsumerLine {
   itemCode?: string;
   itemDescription?: string;
   warehouseCode?: string;
+  accountCode?: string;
+  costingCode?: string;
+  projectCode?: string;
   batchNumbers?: BatchNumbers[];
 }
 
@@ -29,6 +32,9 @@ export interface Consumer {
 export interface CreateConsumerLine {
   quantity: number;
   itemCode?: string;
+  warehouseCode?: string;
+  projectCode?: string;
+  costingCode?: string;
   baseEntry: number | null;
   baseLine?: number;
   baseType?: number;

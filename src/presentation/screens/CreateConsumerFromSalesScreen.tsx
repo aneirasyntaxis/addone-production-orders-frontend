@@ -1,4 +1,4 @@
-// Presentation - Create Advanced Product Screen
+// Presentation - Create Consumer From Sales Screen (Salida independiente)
 import React, { useState } from 'react';
 import {
   View,
@@ -17,101 +17,51 @@ import { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme/theme';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
+import { DatePickerInput } from '../components/DatePickerInput';
 import { ItemSearchInput } from '../components/ItemSearchInput';
 import { ProjectSearchInput } from '../components/ProjectSearchInput';
-import { DatePickerInput } from '../components/DatePickerInput';
-import { WarehouseSearchInput } from '../components/WarehouseSearchInput';
-import { useCreateAdvancedProduct } from '../hooks/useCreateAdvancedProduct';
-import { useConsumerById } from '../hooks/useConsumerById';
+import { useCreateConsumer } from '../hooks/useCreateConsumer';
 import { useProfitCenters } from '../hooks/useProfitCenters';
+import { CreateConsumerLine, Consumer } from '../../domain/entities/consumer.entity';
 import { Item } from '../../domain/entities/item.entity';
 import { Project } from '../../domain/entities/project.entity';
-import { Warehouse } from '../../domain/entities/warehouse.entity';
-import { CreateAdvancedProductLine } from '../../domain/entities/advanced-product.entity';
-import { BatchNumbers } from '../../domain/entities/batch-numbers.entity';
 import { logger } from '../../core/logging/logger';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'CreateAdvancedProduct'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'CreateConsumerFromSales'>;
 
-interface AdvancedProductLine {
+interface ConsumerLine {
   id: string;
   itemCode: string;
   itemName: string;
   projectCode: string;
+  projectName: string;
   costingCode: string;
   quantity: string;
   warehouseCode: string;
   availableWarehouses: Array<{ code: string; name: string; inStock: number }>;
-  maxQuantity?: number;
-  baseEntry: number | null;
-  baseLine?: number;
-  baseType?: number | null;
-  batchNumbers?: BatchNumbers[];
 }
 
-export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route }) => {
-  const consumerId = route.params.consumerId;
-  const { data: sourceConsumer } = useConsumerById(consumerId);
+export const CreateConsumerFromSalesScreen: React.FC<Props> = ({ navigation }) => {
   const [docDueDate, setDocDueDate] = useState<Date | null>(null);
   const [comments, setComments] = useState('');
-  const [journalMemo, setJournalMemo] = useState('');
-  const [lines, setLines] = useState<AdvancedProductLine[]>([]);
-
+  const [journalMemo, setJournalMemo] = useState('Salida de mercancías');
+  const [lines, setLines] = useState<ConsumerLine[]>([
+    {
+      id: Date.now().toString(),
+      itemCode: '',
+      itemName: '',
+      projectCode: '',
+      projectName: '',
+      costingCode: '',
+      quantity: '',
+      warehouseCode: '',
+      availableWarehouses: [],
+    },
+  ]);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
+  const { mutate: createConsumer, isPending } = useCreateConsumer();
   const { data: profitCenters = [], isLoading: isLoadingProfitCenters } = useProfitCenters();
-
-  // Initialize form with consumer data
-  React.useEffect(() => {
-    if (sourceConsumer) {
-      logger.debug('CreateAdvancedProductScreen: Initializing from consumer', { 
-        docDueDate: sourceConsumer.docDueDate,
-        docDate: sourceConsumer.docDate,
-        comments: sourceConsumer.comments,
-        journalMemo: sourceConsumer.journalMemo,
-        linesCount: sourceConsumer.documentLines.length
-      });
-      
-      // Set dates - try docDueDate first, then docDate as fallback
-      const dateToUse = sourceConsumer.docDueDate || sourceConsumer.docDate;
-      if (dateToUse) {
-        const parsedDate = new Date(dateToUse);
-        logger.debug('CreateAdvancedProductScreen: Setting date', { dateToUse, parsedDate });
-        setDocDueDate(parsedDate);
-      }
-      // Set comments and memo
-      setComments(sourceConsumer.comments || '');
-      setJournalMemo(`Entrada generada con la salida #${sourceConsumer.docNum}`);
-      // Set lines from consumer
-      console.log('CreateAdvancedProductScreen: Consumer lines data', 
-        sourceConsumer.documentLines.map(line => ({
-          itemCode: line.itemCode,
-          projectCode: line.projectCode,
-          costingCode: line.costingCode,
-          warehouseCode: line.warehouseCode,
-          quantity: line.quantity
-        }))
-      );
-      const consumerLines: AdvancedProductLine[] = sourceConsumer.documentLines.map((line, index) => ({
-        id: Date.now().toString() + index,
-        itemCode: line.itemCode || '',
-        itemName: line.itemDescription || '',
-        projectCode: line.projectCode || '',
-        costingCode: line.costingCode || '',
-        quantity: line.quantity.toString(),
-        warehouseCode: line.warehouseCode || '',
-        availableWarehouses: [],
-        maxQuantity: line.quantity,
-        baseEntry: sourceConsumer.docEntry || null,
-        baseLine: line.lineNumber,
-        baseType: 60,
-        batchNumbers: line.batchNumbers,
-      }));
-      setLines(consumerLines);
-    }
-  }, [sourceConsumer]);
-
-  const { mutate: createAdvancedProduct, isPending } = useCreateAdvancedProduct();
 
   const handleDueDateChange = (date: Date) => {
     setDocDueDate(date);
@@ -122,20 +72,16 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
   };
 
   const addLine = () => {
-    const newLine: AdvancedProductLine = {
+    const newLine: ConsumerLine = {
       id: Date.now().toString(),
       itemCode: '',
       itemName: '',
       projectCode: '',
+      projectName: '',
       costingCode: '',
       quantity: '',
       warehouseCode: '',
       availableWarehouses: [],
-      maxQuantity: undefined,
-      baseEntry: null,
-      baseLine: undefined,
-      baseType: null,
-      batchNumbers: undefined,
     };
     setLines([...lines, newLine]);
     // Clear "no materials" error when adding a line
@@ -144,55 +90,10 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
     }
   };
 
-  const removeLine = (id: string) => {
-    setLines(lines.filter((line) => line.id !== id));
-  };
-
-  const updateLineWarehouse = (id: string, warehouse: Warehouse) => {
-    setLines(
-      lines.map((line) => (line.id === id ? { ...line, warehouseCode: warehouse.warehouseCode } : line))
-    );
-    // Clear warehouse error when selected
-    if (errors[`line-${id}-warehouse`]) {
-      setErrors({ ...errors, [`line-${id}-warehouse`]: '' });
-    }
-  };
-
-  const clearLineWarehouse = (id: string) => {
-    setLines(
-      lines.map((line) => (line.id === id ? { ...line, warehouseCode: '' } : line))
-    );
-  };
-
-  const updateLineProject = (id: string, project: Project) => {
-    setLines(
-      lines.map((line) => (line.id === id ? { ...line, projectCode: project.code } : line))
-    );
-    // Clear error when project is selected
-    if (errors[`line-${id}-project`]) {
-      setErrors({ ...errors, [`line-${id}-project`]: '' });
-    }
-  };
-
-  const clearLineProject = (id: string) => {
-    setLines(
-      lines.map((line) => (line.id === id ? { ...line, projectCode: '' } : line))
-    );
-    // Clear error when project is cleared
-    if (errors[`line-${id}-project`]) {
-      setErrors({ ...errors, [`line-${id}-project`]: '' });
-    }
-  };
-
-  const updateLineCostingCode = (id: string, costingCode: string) => {
-    setLines(
-      lines.map((line) => (line.id === id ? { ...line, costingCode } : line))
-    );
-  };
-
   const updateLineItem = (id: string, item: Item) => {
-    // Get all warehouses (no filter needed for entries)
+    // Filter warehouses with InStock > 0
     const availableWarehouses = item.itemWarehouseInfoCollection
+      .filter(w => w.inStock > 0)
       .map(w => ({
         code: w.warehouseCode || '',
         name: w.warehouseCode || '',
@@ -227,12 +128,62 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
               itemCode: '', 
               itemName: '',
               projectCode: '',
+              projectName: '',
               costingCode: '',
               warehouseCode: '',
               availableWarehouses: [],
             } 
           : line
       )
+    );
+  };
+
+  const removeLine = (id: string) => {
+    // No permitir eliminar si solo queda una línea
+    if (lines.length <= 1) {
+      Toast.show({
+        type: 'error',
+        text1: 'No se puede eliminar',
+        text2: 'Debe mantener al menos una línea de material',
+      });
+      return;
+    }
+    setLines(lines.filter((line) => line.id !== id));
+  };
+
+  const updateLineWarehouse = (id: string, warehouseCode: string) => {
+    setLines(
+      lines.map((line) => (line.id === id ? { ...line, warehouseCode } : line))
+    );
+    // Clear warehouse error when selected
+    if (errors[`line-${id}-warehouse`]) {
+      setErrors({ ...errors, [`line-${id}-warehouse`]: '' });
+    }
+  };
+
+  const updateLineProject = (id: string, project: Project) => {
+    setLines(
+      lines.map((line) => (line.id === id ? { ...line, projectCode: project.code, projectName: project.name || '' } : line))
+    );
+    // Clear error when project is selected
+    if (errors[`line-${id}-project`]) {
+      setErrors({ ...errors, [`line-${id}-project`]: '' });
+    }
+  };
+
+  const clearLineProject = (id: string) => {
+    setLines(
+      lines.map((line) => (line.id === id ? { ...line, projectCode: '', projectName: '' } : line))
+    );
+    // Clear error when project is cleared
+    if (errors[`line-${id}-project`]) {
+      setErrors({ ...errors, [`line-${id}-project`]: '' });
+    }
+  };
+
+  const updateLineCostingCode = (id: string, costingCode: string) => {
+    setLines(
+      lines.map((line) => (line.id === id ? { ...line, costingCode } : line))
     );
   };
 
@@ -246,16 +197,6 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
     // Remove leading zeros except for decimals (0.5 is valid, but 007 becomes 7)
     if (validValue && !validValue.startsWith('0.')) {
       validValue = validValue.replace(/^0+/, '') || '0';
-    }
-    
-    // Validate against maxQuantity if it exists
-    const line = lines.find(l => l.id === id);
-    if (line?.maxQuantity !== undefined && validValue) {
-      const numValue = parseFloat(validValue);
-      if (numValue > line.maxQuantity) {
-        setErrors({ ...errors, [`line-${id}-quantity`]: `Cantidad máxima: ${line.maxQuantity}` });
-        return;
-      }
     }
     
     setLines(
@@ -276,6 +217,12 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
 
     if (lines.length === 0) {
       newErrors.lines = 'Debe agregar al menos un material';
+    } else {
+      // Validar que al menos una línea tenga cantidad mayor a 0
+      const hasValidQuantity = lines.some((line) => line.quantity && parseFloat(line.quantity) > 0);
+      if (!hasValidQuantity) {
+        newErrors.lines = 'Debe ingresar al menos una cantidad mayor a 0';
+      }
     }
 
     lines.forEach((line) => {
@@ -285,12 +232,19 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
       if (line.itemCode && !line.warehouseCode) {
         newErrors[`line-${line.id}-warehouse`] = 'Seleccione un almacén';
       }
-      if (!line.quantity || parseFloat(line.quantity) <= 0) {
-        newErrors[`line-${line.id}-quantity`] = 'Cantidad inválida';
+      // Validate project is valid if entered (field is optional but must be valid)
+      if (line.projectCode && !line.projectName) {
+        newErrors[`line-${line.id}-project`] = 'El proyecto ingresado no es válido';
       }
-      // Validar contra maxQuantity (cantidad de la salida)
-      if (line.maxQuantity !== undefined && line.quantity && parseFloat(line.quantity) > line.maxQuantity) {
-        newErrors[`line-${line.id}-quantity`] = `Cantidad máxima: ${line.maxQuantity}`;
+      if (line.quantity && parseFloat(line.quantity) < 0) {
+        newErrors[`line-${line.id}-quantity`] = 'La cantidad no puede ser negativa';
+      }
+      // Validar que la cantidad no exceda el stock disponible
+      if (line.quantity && line.warehouseCode && parseFloat(line.quantity) > 0) {
+        const selectedWarehouse = line.availableWarehouses.find(w => w.code === line.warehouseCode);
+        if (selectedWarehouse && parseFloat(line.quantity) > selectedWarehouse.inStock) {
+          newErrors[`line-${line.id}-quantity`] = `La cantidad no puede ser mayor al stock disponible (${selectedWarehouse.inStock})`;
+        }
       }
     });
 
@@ -299,7 +253,7 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
   };
 
   const handleSubmit = () => {
-    logger.info('CreateAdvancedProductScreen: Submit pressed');
+    logger.info('CreateConsumerFromSalesScreen: Submit pressed');
 
     if (!validate()) {
       Toast.show({
@@ -310,16 +264,18 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
       return;
     }
 
-    const productLines: CreateAdvancedProductLine[] = lines.map((line) => ({
-      quantity: parseFloat(line.quantity),
-      baseEntry: line.baseEntry,
-      itemCode: line.itemCode,
-      projectCode: line.projectCode || undefined,
-      costingCode: line.costingCode || undefined,
-      baseLine: line.baseLine,
-      baseType: line.baseType,
-      batchNumbers: line.batchNumbers && line.batchNumbers.length > 0 ? line.batchNumbers : undefined,
-    }));
+    const consumerLines: CreateConsumerLine[] = lines
+      .filter((line) => line.quantity && parseFloat(line.quantity) > 0)
+      .map((line) => ({
+        quantity: parseFloat(line.quantity),
+        itemCode: line.itemCode,
+        warehouseCode: line.warehouseCode,
+        projectCode: line.projectCode || undefined,
+        costingCode: line.costingCode || undefined,
+        baseEntry: null,
+        baseLine: undefined,
+        baseType: -1, // not order
+      }));
 
     const formatDateForApi = (date: Date): string => {
       const year = date.getFullYear();
@@ -328,21 +284,19 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
       return `${year}-${month}-${day}`;
     };
 
-    const product = {
+    const consumer = {
       docDueDate: formatDateForApi(docDueDate!),
       comments: comments || '',
-      journalMemo: journalMemo || '',
-      documentLines: productLines,
+      journalMemo: journalMemo || 'Salida de mercancías creada desde app',
+      documentLines: consumerLines,
     };
 
-    logger.debug('CreateAdvancedProductScreen: Creating advanced product', { product });
-
-    createAdvancedProduct(product, {
-      onSuccess: (data) => {
+    createConsumer(consumer, {
+      onSuccess: (data: Consumer) => {
         Toast.show({
           type: 'success',
-          text1: 'Entrada Creada',
-          text2: `Entrada #${data.docNum || data.docEntry} creada exitosamente`,
+          text1: 'Salida Creada',
+          text2: `Salida #${data.docNum || data.docEntry} creada exitosamente`,
         });
         navigation.goBack();
       },
@@ -350,7 +304,7 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
         Toast.show({
           type: 'error',
           text1: 'Error',
-          text2: error?.message || 'No se pudo crear la entrada de mercancías',
+          text2: error?.message || 'No se pudo crear la salida',
         });
       },
     });
@@ -362,7 +316,7 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Nueva Entrada de Mercancías</Text>
+        <Text style={styles.headerTitle}>Nueva Salida de Mercancías</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -386,33 +340,36 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
             <Text style={styles.errorText}>{errors.lines}</Text>
           )}
 
+          {lines.length === 0 ? (
+            <View style={styles.emptyLines}>
+              <Text style={styles.emptyLinesText}>
+                No hay materiales agregados. Presione "Agregar" para comenzar.
+              </Text>
+            </View>
+          ) : null}
+
           {lines.map((line, index) => (
-            <View key={line.id} style={styles.lineCard}>
+            <Card key={line.id} style={styles.lineCard}>
               <View style={styles.lineHeader}>
-                <Text style={styles.lineTitle}>Material #{index + 1}</Text>
+                <Text style={styles.lineTitle}>Linea {index + 1}</Text>
                 <TouchableOpacity onPress={() => removeLine(line.id)}>
                   <Text style={styles.removeButton}>✕</Text>
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Producto</Text>
-                <TextInput
-                  style={[styles.input, styles.inputDisabled]}
-                  value={line.itemCode}
-                  editable={false}
-                  placeholder="Código del producto"
-                  placeholderTextColor={theme.colors.textSecondary}
-                />
-                {errors[`line-${line.id}-item`] && (
-                  <Text style={styles.errorText}>{errors[`line-${line.id}-item`]}</Text>
-                )}
-              </View>
+              <ItemSearchInput
+                value={line.itemCode}
+                onSelectItem={(item) => updateLineItem(line.id, item)}
+                onClear={() => clearLineItem(line.id)}
+                label="Producto"
+                placeholder="Buscar producto..."
+                error={errors[`line-${line.id}-item`]}
+              />
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Nombre</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, styles.inputDisabled]}
                   value={line.itemName}
                   editable={false}
                   placeholder="Nombre del producto"
@@ -456,19 +413,48 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
                 </View>
               </View>
 
-              <WarehouseSearchInput
-                label="Almacén *"
-                value={line.warehouseCode}
-                onSelectWarehouse={(warehouse) => updateLineWarehouse(line.id, warehouse)}
-                onClear={() => clearLineWarehouse(line.id)}
-                placeholder="Buscar almacén..."
-                error={errors[`line-${line.id}-warehouse`]}
-              />
+              {/* Warehouse Selector */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Almacén</Text>
+                {line.itemCode && line.availableWarehouses.length === 0 ? (
+                  <View style={styles.noStockContainer}>
+                    <Text style={styles.noStockText}>
+                      ⚠️ No hay stock disponible en ningún almacén
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={[
+                    styles.pickerContainer,
+                    errors[`line-${line.id}-warehouse`] && styles.inputError,
+                  ]}>
+                    <Picker
+                      selectedValue={line.warehouseCode}
+                      onValueChange={(value) => updateLineWarehouse(line.id, value)}
+                      enabled={line.availableWarehouses.length > 0}
+                      style={styles.picker}
+                    >
+                      <Picker.Item 
+                        label="Seleccione almacén" 
+                        value="" 
+                        color={theme.colors.textSecondary}
+                      />
+                      {line.availableWarehouses.map((warehouse) => (
+                        <Picker.Item
+                          key={warehouse.code}
+                          label={`${warehouse.name} (Stock: ${warehouse.inStock})`}
+                          value={warehouse.code}
+                        />
+                      ))}
+                    </Picker>
+                  </View>
+                )}
+                {errors[`line-${line.id}-warehouse`] && (
+                  <Text style={styles.errorText}>{errors[`line-${line.id}-warehouse`]}</Text>
+                )}
+              </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>
-                  Cantidad{line.maxQuantity !== undefined ? ` (Máx: ${line.maxQuantity})` : ''}
-                </Text>
+                <Text style={styles.label}>Cantidad</Text>
                 <TextInput
                   style={[
                     styles.input,
@@ -484,13 +470,20 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
                   <Text style={styles.errorText}>{errors[`line-${line.id}-quantity`]}</Text>
                 )}
               </View>
-            </View>
+            </Card>
           ))}
+
+          <TouchableOpacity 
+            onPress={addLine} 
+            style={styles.addButtonBottom}
+          >
+            <Text style={styles.addButtonBottomText}>+ Agregar Material</Text>
+          </TouchableOpacity>
         </Card>
 
         {/* Submit Button */}
         <Button
-          title={isPending ? 'Creando...' : 'Crear Entrada'}
+          title={isPending ? 'Creando...' : 'Crear Salida de Mercancías'}
           onPress={handleSubmit}
           disabled={isPending}
           style={styles.submitButton}
@@ -542,7 +535,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   inputGroup: {
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
   label: {
     fontSize: theme.fontSize.sm,
@@ -566,43 +559,37 @@ const styles = StyleSheet.create({
   inputError: {
     borderColor: theme.colors.error,
   },
-  textArea: {
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.sm,
-    fontSize: theme.fontSize.md,
-    color: theme.colors.text,
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
   errorText: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.error,
     marginTop: theme.spacing.xs,
   },
-  addButton: {
-    backgroundColor: theme.colors.primary,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    borderRadius: theme.borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: theme.spacing.sm,
-  },
-  addButtonText: {
-    color: theme.colors.background,
-    fontSize: theme.fontSize.md,
-    fontWeight: '600',
-  },
-  lineCard: {
-    marginBottom: theme.spacing.sm,
-    padding: theme.spacing.sm,
+  pickerContainer: {
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.borderRadius.md,
+    overflow: 'hidden',
+  },
+  picker: {
+    height: Platform.OS === 'ios' ? 180 : 50,
+    color: theme.colors.text,
+  },
+  noStockContainer: {
+    backgroundColor: '#FFF3CD',
+    borderWidth: 1,
+    borderColor: '#FFE69C',
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.sm,
+  },
+  noStockText: {
+    fontSize: theme.fontSize.sm,
+    color: '#856404',
+    textAlign: 'center',
+  },
+  lineCard: {
+    marginBottom: theme.spacing.md,
+    backgroundColor: theme.colors.background,
   },
   lineHeader: {
     flexDirection: 'row',
@@ -619,19 +606,32 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: theme.colors.error,
     fontWeight: 'bold',
+    padding: theme.spacing.xs,
+  },
+  emptyLines: {
+    padding: theme.spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyLinesText: {
+    fontSize: theme.fontSize.md,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+  },
+  addButtonBottom: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+    marginTop: theme.spacing.sm,
+  },
+  addButtonBottomText: {
+    color: theme.colors.background,
+    fontSize: theme.fontSize.md,
+    fontWeight: '600',
   },
   submitButton: {
     marginTop: theme.spacing.md,
-  },
-  pickerContainer: {
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.borderRadius.md,
-    overflow: 'hidden',
-  },
-  picker: {
-    height: Platform.OS === 'ios' ? 180 : 50,
-    color: theme.colors.text,
   },
 });

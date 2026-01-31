@@ -30,6 +30,8 @@ export interface AdvancedProduct {
 export interface CreateAdvancedProductLine {
   quantity: number;
   itemCode?: string;
+  projectCode?: string;
+  costingCode?: string;
   baseEntry: number | null;
   baseLine?: number;
   baseType?: number | null;

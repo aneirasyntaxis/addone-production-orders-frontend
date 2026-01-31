@@ -18,7 +18,6 @@ import { theme } from '../theme/theme';
 import { Card } from '../components/Card';
 import { Header } from '../components/Header';
 import { SkeletonCard } from '../components/Skeleton';
-import { FAB } from '../components/FAB';
 import { Button } from '../components/Button';
 import { useAdvancedProducts } from '../hooks/useAdvancedProducts';
 import { AdvancedProduct } from '../../domain/entities/advanced-product.entity';
@@ -54,11 +53,6 @@ export const AdvancedProductsScreen: React.FC = () => {
       logger.info('AdvancedProductsScreen: Products loaded', { count: products.length });
     }
   }, [products]);
-
-  const handleCreateAdvance = () => {
-    logger.info('AdvancedProductsScreen: Create advance button pressed');
-    navigation.navigate('CreateAdvancedProduct');
-  };
 
   const handleSearch = () => {
     const numericValue = searchText.trim() === '' ? undefined : parseInt(searchText, 10);
@@ -183,9 +177,6 @@ export const AdvancedProductsScreen: React.FC = () => {
         }
       />
 
-      {/* FAB Button */}
-      <FAB onPress={handleCreateAdvance} />
-
       <Toast />
     </SafeAreaView>
   );
@@ -253,7 +244,6 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: theme.spacing.md,
-    paddingBottom: 80, // Extra padding for FAB
   },
   productCard: {
     marginBottom: theme.spacing.md,

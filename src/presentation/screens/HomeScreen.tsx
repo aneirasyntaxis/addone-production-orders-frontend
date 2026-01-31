@@ -24,6 +24,7 @@ import { useAuth } from '../context/AuthContext';
 import { ProductionOrder } from '../../domain/entities/production-order.entity';
 import { handleError } from '../../core/errors/error-handler';
 import { logger } from '../../core/logging/logger';
+import { formatThousands } from '../../core/utils/number-formatter';
 
 export const HomeScreen: React.FC = () => {
   const { session } = useAuth();
@@ -31,6 +32,11 @@ export const HomeScreen: React.FC = () => {
   const [searchText, setSearchText] = React.useState('');
   const [searchNumber, setSearchNumber] = React.useState<number | undefined>(undefined);
   const { data: orders, isLoading, error, refetch, isRefetching } = useProductionOrders(searchNumber);
+  const [isPulling, setIsPulling] = React.useState(false);
+  const [pullDistance, setPullDistance] = React.useState(0);
+  const flatListRef = React.useRef<FlatList>(null);
+  const startY = React.useRef(0);
+  const scrollY = React.useRef(0);
 
   // Debounce search - búsqueda automática después de 850ms de inactividad
   React.useEffect(() => {
@@ -48,6 +54,37 @@ export const HomeScreen: React.FC = () => {
       console.error('🔴 Production Orders Error:', error);
     }
   }, [error]);
+
+  // Pull-to-refresh para web
+  const handleScroll = (event: any) => {
+    scrollY.current = event.nativeEvent.contentOffset.y;
+  };
+
+  const handleTouchStart = (event: any) => {
+    if (scrollY.current <= 0) {
+      startY.current = event.nativeEvent.pageY;
+    }
+  };
+
+  const handleTouchMove = (event: any) => {
+    if (scrollY.current <= 0 && startY.current > 0) {
+      const currentY = event.nativeEvent.pageY;
+      const distance = currentY - startY.current;
+      if (distance > 0 && distance < 150) {
+        setPullDistance(distance);
+        setIsPulling(true);
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (isPulling && pullDistance > 80) {
+      refetch();
+    }
+    setIsPulling(false);
+    setPullDistance(0);
+    startY.current = 0;
+  };
 
   // Log successful data load
   React.useEffect(() => {
@@ -88,11 +125,16 @@ export const HomeScreen: React.FC = () => {
       <View style={styles.orderHeader}>
         <View style={styles.orderHeaderLeft}>
           <Text style={styles.orderNumber}>OF #{item.documentNumber || 'N/A'}</Text>
+        </View>
+        <View style={styles.orderHeaderCenter}>
           <View style={[styles.statusBadge, getStatusStyle(item.productionOrderStatus)]}>
             <Text style={styles.statusText}>{getStatusText(item.productionOrderStatus)}</Text>
           </View>
         </View>
-        <Text style={styles.absoluteEntry}>ID: {item.absoluteEntry}</Text>
+        <View style={styles.orderHeaderRight}>
+          <Text style={styles.materialsCount}>📦 {item.productionOrderLines.length}</Text>
+          <Text style={styles.materialsLabel}>{item.productionOrderLines.length === 1 ? 'material' : 'materiales'}</Text>
+        </View>
       </View>
 
       <View style={styles.orderContent}>
@@ -102,25 +144,20 @@ export const HomeScreen: React.FC = () => {
         </View>
         <View style={styles.orderRow}>
           <Text style={styles.orderLabel}>Cantidad:</Text>
-          <Text style={styles.orderValue}>{item.plannedQuantity}</Text>
+          <Text style={styles.orderValue}>{formatThousands(item.plannedQuantity)}</Text>
         </View>
         <View style={styles.orderRow}>
           <Text style={styles.orderLabel}>Fecha entrega:</Text>
           <Text style={styles.orderValue}>
-            {new Date(item.dueDate).toLocaleDateString('es-ES')}
+            {item.dueDate.split('-').reverse().join('/')}
           </Text>
         </View>
         {item.remarks && (
-          <View style={styles.remarksContainer}>
+          <View style={styles.orderRow}>
             <Text style={styles.orderLabel}>Observaciones:</Text>
-            <Text style={styles.remarksText}>{item.remarks}</Text>
+            <Text style={styles.orderValue}>{item.remarks}</Text>
           </View>
         )}
-        <View style={styles.linesInfo}>
-          <Text style={styles.linesText}>
-            📦 {item.productionOrderLines.length} materiales
-          </Text>
-        </View>
         </View>
       </Card>
     </TouchableOpacity>
@@ -198,11 +235,22 @@ export const HomeScreen: React.FC = () => {
       </View>
 
       {/* Orders List */}
+      {isPulling && (
+        <View style={[styles.pullIndicator, { opacity: Math.min(pullDistance / 80, 1) }]}>
+          <Text style={styles.pullText}>↓ {pullDistance > 80 ? 'Suelta para actualizar' : 'Desliza para actualizar'}</Text>
+        </View>
+      )}
       <FlatList
+        ref={flatListRef}
         data={orders || []}
         renderItem={renderOrderItem}
         keyExtractor={(item) => item.absoluteEntry?.toString() || Math.random().toString()}
         contentContainerStyle={styles.listContainer}
+        onScroll={handleScroll}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
         }
@@ -264,6 +312,22 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.sm,
     fontWeight: 'bold',
   },
+  pullIndicator: {
+    position: 'absolute',
+    top: 160,
+    left: 0,
+    right: 0,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+    backgroundColor: theme.colors.surface,
+  },
+  pullText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
+  },
   listContainer: {
     padding: theme.spacing.md,
     paddingBottom: 80, // Extra padding for FAB
@@ -274,20 +338,36 @@ const styles = StyleSheet.create({
   orderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: theme.spacing.md,
     paddingBottom: theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
+    gap: theme.spacing.sm,
   },
   orderHeaderLeft: {
     flex: 1,
+  },
+  orderHeaderCenter: {
+    alignItems: 'center',
+  },
+  orderHeaderRight: {
+    alignItems: 'flex-end',
   },
   orderNumber: {
     fontSize: theme.fontSize.lg,
     fontWeight: 'bold',
     color: theme.colors.text,
-    marginBottom: theme.spacing.xs,
+  },
+  materialsCount: {
+    fontSize: theme.fontSize.md,
+    fontWeight: 'bold',
+    color: theme.colors.text,
+  },
+  materialsLabel: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
   },
   absoluteEntry: {
     fontSize: theme.fontSize.sm,
@@ -342,16 +422,6 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     marginTop: theme.spacing.xs,
     fontStyle: 'italic',
-  },
-  linesInfo: {
-    marginTop: theme.spacing.sm,
-    paddingTop: theme.spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-  },
-  linesText: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
   },
   emptyContainer: {
     flex: 1,

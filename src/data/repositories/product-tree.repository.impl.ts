@@ -63,6 +63,7 @@ export class ProductTreeRepositoryImpl implements IProductTreeRepository {
       warehouse: dto.warehouse,
       issueMethod: dto.issueMethod,
       itemType: dto.itemType,
+      lineText: dto.lineText,
     };
   }
 }

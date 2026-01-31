@@ -9,17 +9,20 @@ import { Card } from '../components/Card';
 import { FAB } from '../components/FAB';
 import { useConsumersByProductionOrder } from '../hooks/useConsumersByProductionOrder';
 import { Consumer } from '../../domain/entities/consumer.entity';
+import { ProductionOrder } from '../../domain/entities/production-order.entity';
 import { handleError } from '../../core/errors/error-handler';
 import { logger } from '../../core/logging/logger';
 
 interface ProductionOrderConsumersTabProps {
   productionOrderId: number;
+  productionOrder?: ProductionOrder;
 }
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export const ProductionOrderConsumersTab: React.FC<ProductionOrderConsumersTabProps> = ({
   productionOrderId,
+  productionOrder,
 }) => {
   const navigation = useNavigation<NavigationProp>();
   const {
@@ -51,28 +54,32 @@ export const ProductionOrderConsumersTab: React.FC<ProductionOrderConsumersTabPr
     navigation.navigate('CreateConsumer', { productionOrderId });
   };
 
+  // Verificar si hay líneas pendientes de consumir (excluyendo pit_Text)
+  const hasRemainingLines = React.useMemo(() => {
+    if (!productionOrder) return true; // Si no hay orden, mostrar botón por defecto
+    
+    return productionOrder.productionOrderLines.some((line) => {
+      // Excluir líneas de tipo texto
+      if (line.itemType === 'pit_Text') return false;
+      
+      const plannedQty = line.plannedQuantity || 0;
+      const issuedQty = line.issuedQuantity || 0;
+      const remainingQty = plannedQty - issuedQty;
+      
+      return remainingQty > 0;
+    });
+  }, [productionOrder]);
+
   const renderConsumerItem = ({ item }: { item: Consumer }) => (
     <Card style={styles.consumerCard}>
       <View style={styles.consumerHeader}>
         <View style={styles.consumerHeaderLeft}>
-          <Text style={styles.consumerNumber}>Consumo #{item.docNum || item.docEntry}</Text>
+          <Text style={styles.consumerNumber}>Emisión #{item.docNum || item.docEntry}</Text>
           <Text style={styles.docEntry}>Emisión para producción</Text>
         </View>
       </View>
 
       <View style={styles.consumerContent}>
-        {item.journalMemo && (
-          <View style={styles.consumerRow}>
-            <Text style={styles.consumerLabel}>Memo:</Text>
-            <Text style={styles.consumerValue}>{item.journalMemo}</Text>
-          </View>
-        )}
-        {item.comments && (
-          <View style={styles.consumerRow}>
-            <Text style={styles.consumerLabel}>Comentarios:</Text>
-            <Text style={styles.consumerValue}>{item.comments}</Text>
-          </View>
-        )}
         {item.docDate && (
           <View style={styles.consumerRow}>
             <Text style={styles.consumerLabel}>Fecha:</Text>
@@ -143,7 +150,7 @@ export const ProductionOrderConsumersTab: React.FC<ProductionOrderConsumersTabPr
           </View>
         }
       />
-      <FAB onPress={handleCreateConsumer} />
+      {hasRemainingLines && <FAB onPress={handleCreateConsumer} />}
     </View>
   );
 };
@@ -217,9 +224,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: theme.spacing.md,
-    paddingBottom: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
   },
   consumerHeaderLeft: {
     flex: 1,

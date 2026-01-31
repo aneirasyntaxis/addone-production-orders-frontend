@@ -17,11 +17,14 @@ import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { DatePickerInput } from '../components/DatePickerInput';
 import { ItemSearchInput } from '../components/ItemSearchInput';
+import { WarehouseSearchInput } from '../components/WarehouseSearchInput';
 import { useCreateConsumer } from '../hooks/useCreateConsumer';
 import { useProductionOrderById } from '../hooks/useProductionOrderById';
 import { CreateConsumerLine, Consumer } from '../../domain/entities/consumer.entity';
 import { Item } from '../../domain/entities/item.entity';
+import { Warehouse } from '../../domain/entities/warehouse.entity';
 import { logger } from '../../core/logging/logger';
+import { useQueryClient } from '@tanstack/react-query';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateConsumer'>;
 
@@ -30,6 +33,7 @@ interface ConsumerLine {
   itemCode: string;
   itemName: string;
   quantity: string;
+  warehouseCode: string;
   baseEntry?: number;
   baseLine?: number;
 }
@@ -37,6 +41,7 @@ interface ConsumerLine {
 export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => {
   const productionOrderId = route.params?.productionOrderId;
   const { data: productionOrder } = useProductionOrderById(productionOrderId || 0);
+  const queryClient = useQueryClient();
   const [docDueDate, setDocDueDate] = useState<Date | null>(null);
   const [comments, setComments] = useState('');
   const [journalMemo, setJournalMemo] = useState('');
@@ -59,17 +64,29 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
       }
       
       // Set memo with production order number
-      setJournalMemo(`Salidas de mercancías para la orden de fabricación #${productionOrder.documentNumber}`);
+      setJournalMemo(`Emisión de producción para la orden de fabricación #${productionOrder.documentNumber}`);
       
-      // Set lines from production order materials (only issued materials)
-      const orderLines: ConsumerLine[] = productionOrder.productionOrderLines.map((line, index) => ({
-        id: Date.now().toString() + index,
-        itemCode: (line.itemNo ?? '') as string,
-        itemName: (line.itemName ?? '') as string,
-        quantity: '',
-        baseEntry: productionOrder.absoluteEntry || 0,
-        baseLine: line.lineNumber ?? index,
-      }));
+      // Set lines from production order materials (only issued materials, excluding pit_Text lines)
+      const orderLines: ConsumerLine[] = productionOrder.productionOrderLines
+        .filter((line) => line.itemType !== 'pit_Text') // Descartar líneas de tipo texto
+        .map((line, index) => {
+          const plannedQty = line.plannedQuantity || 0;
+          const issuedQty = line.issuedQuantity || 0;
+          const remainingQty = plannedQty - issuedQty;
+          
+          return {
+            id: Date.now().toString() + index,
+            itemCode: (line.itemNo ?? '') as string,
+            itemName: (line.itemName ?? '') as string,
+            quantity: remainingQty > 0 ? remainingQty.toString() : '',
+            warehouseCode: line.warehouse || '',
+            baseEntry: productionOrder.absoluteEntry || 0,
+            baseLine: line.lineNumber,
+            remainingQty, // Keep for filtering
+          };
+        })
+        .filter((line) => line.remainingQty > 0) // Solo incluir líneas con cantidad pendiente
+        .map(({ remainingQty, ...line }) => line); // Remover remainingQty temporal
       setLines(orderLines);
     }
   }, [productionOrder, productionOrderId]);
@@ -88,6 +105,7 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
       itemCode: '',
       itemName: '',
       quantity: '',
+      warehouseCode: '',
     };
     setLines([...lines, newLine]);
     // Clear "no materials" error when adding a line
@@ -115,6 +133,22 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
       lines.map((line) =>
         line.id === id ? { ...line, itemCode: '', itemName: '' } : line
       )
+    );
+  };
+
+  const updateLineWarehouse = (id: string, warehouse: Warehouse) => {
+    setLines(
+      lines.map((line) => (line.id === id ? { ...line, warehouseCode: warehouse.warehouseCode } : line))
+    );
+    // Clear warehouse error when selected
+    if (errors[`line-${id}-warehouse`]) {
+      setErrors({ ...errors, [`line-${id}-warehouse`]: '' });
+    }
+  };
+
+  const clearLineWarehouse = (id: string) => {
+    setLines(
+      lines.map((line) => (line.id === id ? { ...line, warehouseCode: '' } : line))
     );
   };
 
@@ -173,6 +207,9 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
       if (!line.itemCode) {
         newErrors[`line-${line.id}-item`] = 'Seleccione un producto';
       }
+      if (!line.warehouseCode) {
+        newErrors[`line-${line.id}-warehouse`] = 'Seleccione un almacén';
+      }
       if (line.quantity && parseFloat(line.quantity) < 0) {
         newErrors[`line-${line.id}-quantity`] = 'La cantidad no puede ser negativa';
       }
@@ -198,7 +235,7 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
       .filter((line) => line.quantity && parseFloat(line.quantity) > 0)
       .map((line) => ({
         quantity: parseFloat(line.quantity),
-        itemCode: line.itemCode,
+        warehouseCode: line.warehouseCode,
         baseEntry: line.baseEntry ?? null,
         baseLine: line.baseLine,
         baseType: 202, // Production Order type
@@ -222,10 +259,18 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
 
     createConsumer(consumer, {
       onSuccess: (data: Consumer) => {
+        // Invalidar cache de la orden de producción para que se recargue con datos actualizados
+        if (productionOrderId) {
+          queryClient.invalidateQueries({ queryKey: ['production-order', productionOrderId] });
+        }
+        
+        // Invalidar cache de la lista de órdenes de producción para reflejar cambios de estado
+        queryClient.invalidateQueries({ queryKey: ['production-orders'] });
+        
         Toast.show({
           type: 'success',
-          text1: 'Salida de Mercancías Creada',
-          text2: `Salida de Mercancías #${data.docNum || data.docEntry} creada exitosamente`,
+          text1: 'Emisión para producción Creada',
+          text2: `Emisión para producción #${data.docNum || data.docEntry} creada exitosamente`,
         });
         navigation.goBack();
       },
@@ -233,7 +278,7 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
         Toast.show({
           type: 'error',
           text1: 'Error',
-          text2: error?.message || 'No se pudo crear la salida de mercancías',
+          text2: error?.message || 'No se pudo crear la emisión para producción',
         });
       },
     });
@@ -245,7 +290,7 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Nueva Salida de Mercancías</Text>
+        <Text style={styles.headerTitle}>Nueva Emisión para producción</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -259,32 +304,6 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
             onChange={handleDueDateChange}
             error={errors.docDueDate}
           />
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Comentarios</Text>
-            <TextInput
-              style={styles.textArea}
-              value={comments}
-              onChangeText={setComments}
-              placeholder="Comentarios adicionales..."
-              placeholderTextColor={theme.colors.textSecondary}
-              multiline
-              numberOfLines={3}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Memo del Diario</Text>
-            <TextInput
-              style={styles.textArea}
-              value={journalMemo}
-              onChangeText={setJournalMemo}
-              placeholder="Memo del diario..."
-              placeholderTextColor={theme.colors.textSecondary}
-              multiline
-              numberOfLines={3}
-            />
-          </View>
         </Card>
 
         {/* Materials Section */}
@@ -304,7 +323,7 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
           ) : null}
 
           {lines.map((line, index) => (
-            <Card key={line.id} style={styles.lineCard}>
+            <View key={line.id} style={styles.lineCard}>
               <View style={styles.lineHeader}>
                 <Text style={styles.lineTitle}>Linea {index + 1}</Text>
                 <TouchableOpacity onPress={() => removeLine(line.id)}>
@@ -350,6 +369,15 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
                 />
               </View>
 
+              <WarehouseSearchInput
+                label="Almacén *"
+                value={line.warehouseCode}
+                onSelectWarehouse={(warehouse) => updateLineWarehouse(line.id, warehouse)}
+                onClear={() => clearLineWarehouse(line.id)}
+                placeholder="Buscar almacén..."
+                error={errors[`line-${line.id}-warehouse`]}
+              />
+
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Cantidad</Text>
                 <TextInput
@@ -367,20 +395,13 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
                   <Text style={styles.errorText}>{errors[`line-${line.id}-quantity`]}</Text>
                 )}
               </View>
-            </Card>
+            </View>
           ))}
-
-          <TouchableOpacity 
-            onPress={addLine} 
-            style={styles.addButtonBottom}
-          >
-            <Text style={styles.addButtonBottomText}>+ Agregar Material</Text>
-          </TouchableOpacity>
         </Card>
 
         {/* Submit Button */}
         <Button
-          title={isPending ? 'Creando...' : 'Crear Salida de Mercancías'}
+          title={isPending ? 'Creando...' : 'Crear Emisión para producción'}
           onPress={handleSubmit}
           disabled={isPending}
           style={styles.submitButton}
@@ -432,7 +453,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   inputGroup: {
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
   label: {
     fontSize: theme.fontSize.sm,
@@ -473,8 +494,12 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
   },
   lineCard: {
-    marginBottom: theme.spacing.md,
-    backgroundColor: theme.colors.background,
+    marginBottom: theme.spacing.sm,
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.md,
   },
   lineHeader: {
     flexDirection: 'row',

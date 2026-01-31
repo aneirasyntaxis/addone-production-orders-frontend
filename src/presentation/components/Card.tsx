@@ -19,7 +19,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.lg,
+    padding: theme.spacing.sm,
     shadowColor: theme.colors.shadow,
     shadowOffset: {
       width: 0,

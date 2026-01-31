@@ -17,7 +17,8 @@ const config = {
       backgroundColor: "#ffffff"
     },
     ios: {
-      supportsTablet: true
+      supportsTablet: true,
+      bundleIdentifier: "com.aneira.one.addoneproductionordersfrontend"
     },
     android: {
       adaptiveIcon: {

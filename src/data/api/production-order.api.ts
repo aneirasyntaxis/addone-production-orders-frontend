@@ -95,6 +95,28 @@ export class ProductionOrderApi {
     return response.data;
   }
 
+  async updateQuantity(id: number, data: {
+    plannedQuantity: number;
+    productionOrderLines: Array<{
+      lineNumber: number;
+      plannedQuantity?: number | null;
+      additionalQuantity?: number | null;
+    }>;
+  }): Promise<ProductionOrderDto> {
+    const response = await apiClient.put<ApiResponse<ProductionOrderDto>>(
+      `/production-orders/${id}`,
+      data
+    );
+
+    if (!response.isSuccess || !response.data) {
+      throw new Error(
+        response.message || response.errors?.[0] || 'Error al actualizar la cantidad planificada'
+      );
+    }
+
+    return response.data;
+  }
+
   async delete(id: number): Promise<boolean> {
     const response = await apiClient.delete<ApiResponse<boolean>>(
       `/production-orders/${id}`

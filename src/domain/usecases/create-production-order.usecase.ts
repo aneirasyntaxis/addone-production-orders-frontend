@@ -28,11 +28,11 @@ export class CreateProductionOrderUseCase {
 
     // Validate lines
     for (const line of order.productionOrderLines) {
-      if (!line.itemNo || line.itemNo.trim() === '') {
-        throw new Error('Todos los materiales deben tener un código de producto');
-      }
-      if (line.baseQuantity <= 0) {
-        throw new Error('La cantidad base de cada material debe ser mayor a 0');
+      // Solo validar itemNo si no es tipo texto (pit_Text)
+      if (line.itemType !== 'pit_Text') {
+        if (!line.itemNo || line.itemNo.trim() === '') {
+          throw new Error('Todos los materiales deben tener un código de producto');
+        }
       }
     }
 

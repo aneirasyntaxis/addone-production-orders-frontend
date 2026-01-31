@@ -89,23 +89,23 @@ export const AdvancedProductDetailScreen: React.FC<Props> = ({ route, navigation
                 <Text style={styles.value}>{product.series}</Text>
               </View>
             )}
-            <View style={styles.infoRow}>
+            {/* <View style={styles.infoRow}>
               <Text style={styles.label}>Fecha Documento:</Text>
               <Text style={styles.value}>
-                {new Date(product.docDate).toLocaleDateString('es-ES')}
+                {product.docDate.split('-').reverse().join('/')}
               </Text>
-            </View>
+            </View> */}
             <View style={styles.infoRow}>
               <Text style={styles.label}>Fecha Vencimiento:</Text>
               <Text style={styles.value}>
-                {new Date(product.docDueDate).toLocaleDateString('es-ES')}
+                {product.docDueDate.split('-').reverse().join('/')}
               </Text>
             </View>
             {product.taxDate && (
               <View style={styles.infoRow}>
                 <Text style={styles.label}>Fecha Impuesto:</Text>
                 <Text style={styles.value}>
-                  {new Date(product.taxDate).toLocaleDateString('es-ES')}
+                  {product.taxDate.split('-').reverse().join('/')}
                 </Text>
               </View>
             )}
@@ -122,15 +122,15 @@ export const AdvancedProductDetailScreen: React.FC<Props> = ({ route, navigation
               </View>
             )}
             {product.comments && (
-              <View style={styles.remarksContainer}>
+              <View style={styles.infoRow}>
                 <Text style={styles.label}>Comentarios:</Text>
-                <Text style={styles.remarksText}>{product.comments}</Text>
+                <Text style={styles.value}>{product.comments}</Text>
               </View>
             )}
             {product.journalMemo && (
-              <View style={styles.remarksContainer}>
-                <Text style={styles.label}>Comentarios:</Text>
-                <Text style={styles.remarksText}>{product.journalMemo}</Text>
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Memo:</Text>
+                <Text style={styles.value}>{product.journalMemo}</Text>
               </View>
             )}
           </Card>
@@ -143,7 +143,7 @@ export const AdvancedProductDetailScreen: React.FC<Props> = ({ route, navigation
             {product.documentLines.map((line: AdvancedProductLine, index: number) => (
               <View key={index} style={styles.lineItem}>
                 <View style={styles.lineHeader}>
-                  <Text style={styles.lineNumber}>Línea {line.lineNumber || line.lineNum}</Text>
+                  <Text style={styles.lineNumber}>Línea {index + 1}</Text>
                 </View>
                 <View style={styles.infoRow}>
                   <Text style={styles.label}>Código Producto:</Text>

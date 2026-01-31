@@ -3,8 +3,10 @@ export type RootStackParamList = {
   Login: undefined;
   MainTabs: undefined;
   CreateProductionOrder: undefined;
-  CreateAdvancedProduct: { consumerId?: number; productionOrderId?: number } | undefined;
+  CreateAdvancedProduct: { consumerId: number };
+  CreateProductionReceipt: { productionOrderId: number };
   CreateConsumer: { productionOrderId?: number } | undefined;
+  CreateConsumerFromSales: undefined;
   ProductionOrderDetail: { id: number };
   ProductionOrderConsumers: { productionOrderId: number };
   ProductionOrderAdvancedProducts: { productionOrderId: number };
