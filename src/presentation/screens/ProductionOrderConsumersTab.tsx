@@ -36,7 +36,6 @@ export const ProductionOrderConsumersTab: React.FC<ProductionOrderConsumersTabPr
   React.useEffect(() => {
     if (error) {
       logger.error('ProductionOrderConsumersTab: Error fetching consumers', error);
-      console.error('🔴 Production Order Consumers Error:', error);
     }
   }, [error]);
 

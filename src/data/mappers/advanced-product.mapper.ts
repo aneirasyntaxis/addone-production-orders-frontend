@@ -19,6 +19,7 @@ export class AdvancedProductMapper {
       itemCode: dto.itemCode ?? undefined,
       lineNum: dto.lineNum,
       baseEntry: dto.baseEntry,
+      baseLine: dto.baseLine,
       warehouseCode: dto.warehouseCode ?? undefined,
       batchNumbers: dto.batchNumbers,
     };

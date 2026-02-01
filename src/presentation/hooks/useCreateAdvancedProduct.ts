@@ -9,7 +9,11 @@ const createAdvancedProductUseCase = new CreateAdvancedProductUseCase(
   advancedProductRepository
 );
 
-export const useCreateAdvancedProduct = () => {
+interface UseCreateAdvancedProductOptions {
+  consumerId?: number;
+}
+
+export const useCreateAdvancedProduct = (options?: UseCreateAdvancedProductOptions) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -25,6 +29,13 @@ export const useCreateAdvancedProduct = () => {
       // Invalidate and refetch advanced products
       queryClient.invalidateQueries({ queryKey: ['advanced-products'] });
       queryClient.invalidateQueries({ queryKey: ['advancedProducts'] });
+      
+      // If consumerId is provided, invalidate specific consumer queries
+      if (options?.consumerId) {
+        queryClient.invalidateQueries({ queryKey: ['advancedProducts', 'consumer', options.consumerId] });
+        queryClient.invalidateQueries({ queryKey: ['consumer', options.consumerId] });
+        logger.info('Invalidated consumer-specific queries', { consumerId: options.consumerId });
+      }
     },
     onError: (error) => {
       logger.error('Failed to create advanced product', error);

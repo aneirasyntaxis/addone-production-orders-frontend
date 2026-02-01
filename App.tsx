@@ -32,7 +32,6 @@ class ErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     logger.error('ErrorBoundary caught error', { error, errorInfo });
-    console.error('🔥 APP CRASH:', error);
     Alert.alert(
       'Error',
       `La app encontró un error: ${error.message}\n\nAPI: ${process.env.EXPO_PUBLIC_API_BASE_URL || 'No configurada'}`
@@ -64,7 +63,6 @@ export default function App() {
   useEffect(() => {
     logger.info('🚀 App started');
     logger.info(`API URL: ${process.env.EXPO_PUBLIC_API_BASE_URL}`);
-    console.log('🌐 API URL:', process.env.EXPO_PUBLIC_API_BASE_URL);
     
     // NOTA: window.addEventListener no está disponible en React Native
     // Los error handlers globales se manejan con ErrorBoundary

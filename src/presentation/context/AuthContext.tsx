@@ -47,7 +47,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setSessionState(savedSession);
     } catch (error) {
       logger.error('Error loading session', error);
-      console.error('❌ Error loading session:', error);
     } finally {
       setIsLoading(false);
     }
@@ -66,7 +65,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       logger.info('Logout successful');
     } catch (error) {
       logger.error('Error during logout', error);
-      console.error('❌ Error during logout:', error);
       throw error;
     }
   };

@@ -26,7 +26,6 @@ export const useCreateProductionOrder = () => {
     },
     onError: (error) => {
       logger.error('useCreateProductionOrder: Error creating production order', error);
-      console.error('🔴 Create Production Order Error:', error);
     },
   });
 };

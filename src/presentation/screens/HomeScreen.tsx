@@ -51,7 +51,7 @@ export const HomeScreen: React.FC = () => {
   React.useEffect(() => {
     if (error) {
       logger.error('HomeScreen: Production orders error', error);
-      console.error('🔴 Production Orders Error:', error);
+
     }
   }, [error]);
 

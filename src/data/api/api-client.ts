@@ -30,8 +30,6 @@ export class ApiClient {
           fullUrl, // Logueamos la URL completa
           config.data
         );
-        // Forzar log en consola nativa también para depuración inmediata
-        console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${fullUrl}`);
         return config;
       },
       (error) => {
@@ -67,31 +65,16 @@ export class ApiClient {
     if (error.response) {
       const data = error.response.data as any;
       const message = data?.message || data?.errors?.[0] || 'Error en la solicitud';
-      console.error('❌ API Response Error:', {
-        status: error.response.status,
-        statusText: error.response.statusText,
-        url: error.config?.url,
-        data: error.response.data,
-      });
       return new AppError(message, 'API_ERROR', error.response.status);
     }
 
     if (error.request) {
-      console.error('❌ Network Error (No Response):', {
-        message: error.message,
-        url: error.config?.url,
-        baseURL: error.config?.baseURL,
-        fullUrl: `${error.config?.baseURL || ''}${error.config?.url}`,
-        code: error.code,
-        headers: error.config?.headers,
-      });
       return new AppError(
         error.message || 'No se pudo conectar con el servidor. Verifica tu conexión.',
         error.code || 'NETWORK_ERROR'
       );
     }
 
-    console.error('❌ Unknown Error:', error);
     return new AppError(error.message || 'Error desconocido', 'UNKNOWN_ERROR');
   }
 

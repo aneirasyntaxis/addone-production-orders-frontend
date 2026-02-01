@@ -34,7 +34,6 @@ export const ProductionOrderAdvancesTab: React.FC<ProductionOrderAdvancesTabProp
   React.useEffect(() => {
     if (error) {
       logger.error('ProductionOrderAdvancesTab: Error fetching advances', error);
-      console.error('🔴 Production Order Advances Error:', error);
     }
   }, [error]);
 

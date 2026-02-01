@@ -33,7 +33,6 @@ export const ConsumerDetailScreen: React.FC<Props> = ({ route, navigation }) => 
   React.useEffect(() => {
     if (error) {
       logger.error('ConsumerDetailScreen: Error fetching consumer', error);
-      console.error('🔴 Consumer Detail Error:', error);
     }
   }, [error]);
 

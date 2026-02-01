@@ -44,7 +44,6 @@ export const ConsumersScreen: React.FC = () => {
   React.useEffect(() => {
     if (error) {
       logger.error('ConsumersScreen: Error fetching consumers', error);
-      console.error('🔴 Consumers Error:', error);
     }
   }, [error]);
 

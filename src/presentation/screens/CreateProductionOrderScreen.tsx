@@ -284,21 +284,6 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
       }
     });
 
-    console.log('🔍 VALIDACIÓN:', {
-      errores: newErrors,
-      totalErrores: Object.keys(newErrors).length,
-      headerItemNo,
-      plannedQuantity,
-      postingDate,
-      lines: lines.map(l => ({
-        id: l.id,
-        itemNo: l.itemNo,
-        itemType: l.itemType,
-        plannedQuantity: l.plannedQuantity,
-        lineText: l.lineText
-      }))
-    });
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -342,7 +327,6 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
       productionOrderLines: orderLines,
     };
 
-    console.log('📤 REQUEST A ENVIAR:', JSON.stringify(order, null, 2));
     logger.debug('CreateProductionOrderScreen: Creating order', { order });
 
     createOrder(order, {

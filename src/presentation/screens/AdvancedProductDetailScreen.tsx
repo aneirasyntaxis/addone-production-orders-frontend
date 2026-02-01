@@ -29,7 +29,6 @@ export const AdvancedProductDetailScreen: React.FC<Props> = ({ route, navigation
   React.useEffect(() => {
     if (error) {
       logger.error('AdvancedProductDetailScreen: Error fetching product', error);
-      console.error('🔴 Advanced Product Detail Error:', error);
     }
   }, [error]);
 

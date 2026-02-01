@@ -14,6 +14,7 @@ import { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme/theme';
 import { Card } from '../components/Card';
 import { useAdvancedProductsByConsumer } from '../hooks/useAdvancedProductsByConsumer';
+import { useConsumerById } from '../hooks/useConsumerById';
 
 interface ConsumerEntryTabProps {
   consumerId: number;
@@ -26,6 +27,44 @@ export const ConsumerEntryTab: React.FC<ConsumerEntryTabProps> = ({
 }) => {
   const navigation = useNavigation<NavigationProp>();
   const { data: entries, isLoading, error } = useAdvancedProductsByConsumer(consumerId);
+  const { data: consumer } = useConsumerById(consumerId);
+
+  // Calculate consumed quantities per line
+  const getConsumedQuantities = () => {
+    if (!consumer || !entries) {
+      return {};
+    }
+    
+    const consumed: { [lineNumber: number]: number } = {};
+    
+    entries.forEach(entry => {
+      entry.documentLines?.forEach(line => {
+        if (line.baseLine !== undefined) {
+          consumed[line.baseLine] = (consumed[line.baseLine] || 0) + line.quantity;
+        }
+      });
+    });
+    
+    return consumed;
+  };
+
+  // Check if all lines are fully consumed
+  const areAllLinesConsumed = () => {
+    if (!consumer || !entries) return false;
+    
+    const consumed = getConsumedQuantities();
+    
+    return consumer.documentLines.every(line => {
+      if (line.lineNumber === undefined) return false;
+      
+      const lineNumber = line.lineNumber;
+      const originalQuantity = line.quantity;
+      const consumedQuantity = consumed[lineNumber] || 0;
+      return consumedQuantity >= originalQuantity;
+    });
+  };
+
+  const showCreateButton = !areAllLinesConsumed();
 
   const handleCreateEntry = () => {
     navigation.navigate('CreateAdvancedProduct', { consumerId });
@@ -99,9 +138,11 @@ export const ConsumerEntryTab: React.FC<ConsumerEntryTabProps> = ({
         )}
       </ScrollView>
 
-      <TouchableOpacity onPress={handleCreateEntry} style={styles.fab}>
-        <Text style={styles.fabIcon}>📋</Text>
-      </TouchableOpacity>
+      {showCreateButton && (
+        <TouchableOpacity onPress={handleCreateEntry} style={styles.fab}>
+          <Text style={styles.fabIcon}>📋</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };

@@ -7,6 +7,7 @@ export interface AdvancedProductLineDto {
   itemCode?: string | null;
   lineNum?: number;
   baseEntry?: number;
+  baseLine?: number;
   warehouseCode?: string | null;
   batchNumbers?: BatchNumbersDto[];
 }

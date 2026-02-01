@@ -30,7 +30,6 @@ export const useUpdateProductionOrderQuantity = () => {
     },
     onError: (error) => {
       logger.error('useUpdateProductionOrderQuantity: Error updating quantity', error);
-      console.error('🔴 Update Production Order Quantity Error:', error);
     },
   });
 };

@@ -24,6 +24,7 @@ import { WarehouseSearchInput } from '../components/WarehouseSearchInput';
 import { useCreateAdvancedProduct } from '../hooks/useCreateAdvancedProduct';
 import { useConsumerById } from '../hooks/useConsumerById';
 import { useProfitCenters } from '../hooks/useProfitCenters';
+import { useAdvancedProductsByConsumer } from '../hooks/useAdvancedProductsByConsumer';
 import { Item } from '../../domain/entities/item.entity';
 import { Project } from '../../domain/entities/project.entity';
 import { Warehouse } from '../../domain/entities/warehouse.entity';
@@ -52,6 +53,7 @@ interface AdvancedProductLine {
 export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route }) => {
   const consumerId = route.params.consumerId;
   const { data: sourceConsumer } = useConsumerById(consumerId);
+  const { data: existingEntries } = useAdvancedProductsByConsumer(consumerId);
   const [docDueDate, setDocDueDate] = useState<Date | null>(null);
   const [comments, setComments] = useState('');
   const [journalMemo, setJournalMemo] = useState('');
@@ -69,7 +71,8 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
         docDate: sourceConsumer.docDate,
         comments: sourceConsumer.comments,
         journalMemo: sourceConsumer.journalMemo,
-        linesCount: sourceConsumer.documentLines.length
+        linesCount: sourceConsumer.documentLines.length,
+        existingEntriesCount: existingEntries?.length || 0
       });
       
       // Set dates - try docDueDate first, then docDate as fallback
@@ -82,26 +85,54 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
       // Set comments and memo
       setComments(sourceConsumer.comments || '');
       setJournalMemo(`Entrada generada con la salida #${sourceConsumer.docNum}`);
-      // Set lines from consumer
-      console.log('CreateAdvancedProductScreen: Consumer lines data', 
-        sourceConsumer.documentLines.map(line => ({
-          itemCode: line.itemCode,
-          projectCode: line.projectCode,
-          costingCode: line.costingCode,
-          warehouseCode: line.warehouseCode,
-          quantity: line.quantity
-        }))
-      );
-      const consumerLines: AdvancedProductLine[] = sourceConsumer.documentLines.map((line, index) => ({
+      
+      // Calculate consumed quantities per line
+      const consumedQuantities: { [lineNumber: number]: number } = {};
+      if (existingEntries && existingEntries.length > 0) {
+        logger.debug('CreateAdvancedProductScreen: Processing existing entries', {
+          entriesCount: existingEntries.length,
+          entries: existingEntries.map(e => ({
+            docEntry: e.docEntry,
+            docNum: e.docNum,
+            linesCount: e.documentLines?.length || 0
+          }))
+        });
+        
+        existingEntries.forEach(entry => {
+          entry.documentLines?.forEach(line => {
+            if (line.baseLine !== undefined) {
+              logger.debug('CreateAdvancedProductScreen: Adding consumed quantity', {
+                baseLine: line.baseLine,
+                quantity: line.quantity,
+                previousConsumed: consumedQuantities[line.baseLine] || 0
+              });
+              consumedQuantities[line.baseLine] = (consumedQuantities[line.baseLine] || 0) + line.quantity;
+            }
+          });
+        });
+        
+        logger.debug('CreateAdvancedProductScreen: Total consumed quantities', { consumedQuantities });
+      } else {
+        logger.debug('CreateAdvancedProductScreen: No existing entries found');
+      }
+      
+      // Filter out fully consumed lines and calculate available quantities
+      const availableLines = sourceConsumer.documentLines.filter(line => {
+        if (line.lineNumber === undefined) return false;
+        const consumed = consumedQuantities[line.lineNumber] || 0;
+        return consumed < line.quantity; // Only include lines with remaining quantity
+      });
+      
+      const consumerLines: AdvancedProductLine[] = availableLines.map((line, index) => ({
         id: Date.now().toString() + index,
         itemCode: line.itemCode || '',
         itemName: line.itemDescription || '',
         projectCode: line.projectCode || '',
         costingCode: line.costingCode || '',
-        quantity: line.quantity.toString(),
+        quantity: line.lineNumber !== undefined ? (line.quantity - (consumedQuantities[line.lineNumber] || 0)).toString() : line.quantity.toString(),
         warehouseCode: line.warehouseCode || '',
         availableWarehouses: [],
-        maxQuantity: line.quantity,
+        maxQuantity: line.lineNumber !== undefined ? (line.quantity - (consumedQuantities[line.lineNumber] || 0)) : line.quantity,
         baseEntry: sourceConsumer.docEntry || null,
         baseLine: line.lineNumber,
         baseType: 60,
@@ -109,9 +140,9 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
       }));
       setLines(consumerLines);
     }
-  }, [sourceConsumer]);
+  }, [sourceConsumer, existingEntries]);
 
-  const { mutate: createAdvancedProduct, isPending } = useCreateAdvancedProduct();
+  const { mutate: createAdvancedProduct, isPending } = useCreateAdvancedProduct({ consumerId });
 
   const handleDueDateChange = (date: Date) => {
     setDocDueDate(date);

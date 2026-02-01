@@ -45,7 +45,6 @@ export const ProductionOrderDetailScreen: React.FC<Props> = ({ route, navigation
   React.useEffect(() => {
     if (error) {
       logger.error('ProductionOrderDetailScreen: Error fetching order', error);
-      console.error('🔴 Production Order Detail Error:', error);
     }
   }, [error]);
 

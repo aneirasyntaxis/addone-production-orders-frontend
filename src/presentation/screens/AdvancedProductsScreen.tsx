@@ -43,7 +43,6 @@ export const AdvancedProductsScreen: React.FC = () => {
   React.useEffect(() => {
     if (error) {
       logger.error('AdvancedProductsScreen: Error fetching products', error);
-      console.error('🔴 Advanced Products Error:', error);
     }
   }, [error]);
 
