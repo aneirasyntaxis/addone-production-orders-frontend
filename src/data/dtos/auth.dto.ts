@@ -23,4 +23,6 @@ export interface UserLoginResponseDto {
   role?: string;
   lastLoginAt?: string;
   sapToken?: SapTokenInfoDto;
+  token?: string; // JWT token
+  tokenExpiresAt?: string; // ISO 8601 date string
 }

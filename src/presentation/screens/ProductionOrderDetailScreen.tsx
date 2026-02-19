@@ -128,10 +128,14 @@ export const ProductionOrderDetailScreen: React.FC<Props> = ({ route, navigation
     const updatedLines = order?.productionOrderLines
       .filter(line => line.itemType !== 'pit_Text')
       .map(line => {
-        // Fórmula: factor = cantidad_linea_actual / cantidad_cabecera_original
-        const factor = line.plannedQuantity! / originalQuantity;
-        // nueva_cantidad_linea = factor * cantidad_cabecera_nueva
-        const newLineQuantity = factor * newQuantity;
+        // Cantidad neta de la línea (sin merma) para calcular el factor
+        const lineNetQuantity = line.plannedQuantity! - (line.additionalQuantity || 0);
+        // Fórmula: factor = cantidad_linea_neta / cantidad_cabecera_original
+        const factor = lineNetQuantity / originalQuantity;
+        // nueva_cantidad_linea_neta = factor * cantidad_cabecera_nueva
+        const newLineNetQuantity = factor * newQuantity;
+        // plannedQuantity debe incluir la merma para el backend
+        const newLineQuantity = newLineNetQuantity + (line.additionalQuantity || 0);
         
         return {
           lineNumber: line.lineNumber || 0,
@@ -191,8 +195,12 @@ export const ProductionOrderDetailScreen: React.FC<Props> = ({ route, navigation
           return line;
         }
         
-        const factor = line.plannedQuantity! / originalQuantity;
-        const newLineQuantity = factor * newQuantity;
+        // Cantidad neta de la línea (sin merma) para calcular el factor
+        const lineNetQuantity = line.plannedQuantity! - (line.additionalQuantity || 0);
+        const factor = lineNetQuantity / originalQuantity;
+        const newLineNetQuantity = factor * newQuantity;
+        // plannedQuantity incluye la merma para mostrar correctamente
+        const newLineQuantity = newLineNetQuantity + (line.additionalQuantity || 0);
         
         return {
           ...line,
@@ -346,7 +354,7 @@ export const ProductionOrderDetailScreen: React.FC<Props> = ({ route, navigation
             <View style={[styles.statusBadge, getStatusStyle(order.productionOrderStatus)]}>
               <Text style={styles.statusText}>{getStatusText(order.productionOrderStatus)}</Text>
             </View>
-            {!isEditingWaste && (
+            {!isEditingWaste && order.productionOrderStatus?.toLowerCase() !== 'boposclosed' && (
               <TouchableOpacity onPress={handleEditWaste} style={styles.editWasteButton}>
                 <Text style={styles.editWasteButtonText}>Agregar Merma</Text>
               </TouchableOpacity>
@@ -408,9 +416,11 @@ export const ProductionOrderDetailScreen: React.FC<Props> = ({ route, navigation
               ) : (
                 <View style={styles.quantityDisplayContainer}>
                   <Text style={styles.value}>{formatThousands(order.plannedQuantity)}</Text>
-                  <TouchableOpacity onPress={handleEditQuantity} style={styles.editButton}>
-                    <Text style={styles.editIcon}>✏️</Text>
-                  </TouchableOpacity>
+                  {order.productionOrderStatus?.toLowerCase() !== 'boposclosed' && (
+                    <TouchableOpacity onPress={handleEditQuantity} style={styles.editButton}>
+                      <Text style={styles.editIcon}>✒️</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
             </View>

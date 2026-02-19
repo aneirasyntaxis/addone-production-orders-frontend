@@ -42,7 +42,7 @@ interface ConsumerLine {
 }
 
 export const CreateConsumerFromSalesScreen: React.FC<Props> = ({ navigation }) => {
-  const [docDueDate, setDocDueDate] = useState<Date | null>(null);
+  const [docDueDate, setDocDueDate] = useState<Date | null>(new Date());
   const [comments, setComments] = useState('');
   const [journalMemo, setJournalMemo] = useState('Salida de mercancías');
   const [lines, setLines] = useState<ConsumerLine[]>([
@@ -93,11 +93,11 @@ export const CreateConsumerFromSalesScreen: React.FC<Props> = ({ navigation }) =
   const updateLineItem = (id: string, item: Item) => {
     // Filter warehouses with InStock > 0
     const availableWarehouses = item.itemWarehouseInfoCollection
-      .filter(w => w.inStock > 0)
+      .filter(w => (w.inStock ?? 0) > 0)
       .map(w => ({
         code: w.warehouseCode || '',
         name: w.warehouseCode || '',
-        inStock: w.inStock,
+        inStock: w.inStock ?? 0,
       }));
 
     setLines(
@@ -242,8 +242,8 @@ export const CreateConsumerFromSalesScreen: React.FC<Props> = ({ navigation }) =
       // Validar que la cantidad no exceda el stock disponible
       if (line.quantity && line.warehouseCode && parseFloat(line.quantity) > 0) {
         const selectedWarehouse = line.availableWarehouses.find(w => w.code === line.warehouseCode);
-        if (selectedWarehouse && parseFloat(line.quantity) > selectedWarehouse.inStock) {
-          newErrors[`line-${line.id}-quantity`] = `La cantidad no puede ser mayor al stock disponible (${selectedWarehouse.inStock})`;
+        if (selectedWarehouse && parseFloat(line.quantity) > (selectedWarehouse.inStock ?? 0)) {
+          newErrors[`line-${line.id}-quantity`] = `La cantidad no puede ser mayor al stock disponible (${selectedWarehouse.inStock ?? 0})`;
         }
       }
     });
@@ -441,7 +441,7 @@ export const CreateConsumerFromSalesScreen: React.FC<Props> = ({ navigation }) =
                       {line.availableWarehouses.map((warehouse) => (
                         <Picker.Item
                           key={warehouse.code}
-                          label={`${warehouse.name} (Stock: ${warehouse.inStock})`}
+                          label={`${warehouse.name} (Stock: ${warehouse.inStock ?? 0})`}
                           value={warehouse.code}
                         />
                       ))}

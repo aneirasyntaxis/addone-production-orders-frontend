@@ -45,6 +45,7 @@ export class ProductTreeRepositoryImpl implements IProductTreeRepository {
         quantity: dto.quantity,
         warehouse: dto.warehouse,
         productTreeLines: (dto.productTreeLines || []).map((line) => this.mapLineDtoToEntity(line)),
+        itemWarehouseInfoCollection: dto.itemWarehouseInfoCollection,
       };
     } catch (error) {
       logger.error('ProductTreeRepository: Mapping failed', { 
@@ -64,6 +65,8 @@ export class ProductTreeRepositoryImpl implements IProductTreeRepository {
       issueMethod: dto.issueMethod,
       itemType: dto.itemType,
       lineText: dto.lineText,
+      manageBatchNumbers: dto.manageBatchNumbers,
+      itemWarehouseInfoCollection: dto.itemWarehouseInfoCollection,
     };
   }
 }

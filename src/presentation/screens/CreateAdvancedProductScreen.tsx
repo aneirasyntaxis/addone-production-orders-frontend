@@ -7,9 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Platform,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Toast from 'react-native-toast-message';
@@ -17,17 +15,11 @@ import { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme/theme';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
-import { ItemSearchInput } from '../components/ItemSearchInput';
-import { ProjectSearchInput } from '../components/ProjectSearchInput';
-import { DatePickerInput } from '../components/DatePickerInput';
-import { WarehouseSearchInput } from '../components/WarehouseSearchInput';
 import { useCreateAdvancedProduct } from '../hooks/useCreateAdvancedProduct';
 import { useConsumerById } from '../hooks/useConsumerById';
 import { useProfitCenters } from '../hooks/useProfitCenters';
 import { useAdvancedProductsByConsumer } from '../hooks/useAdvancedProductsByConsumer';
 import { Item } from '../../domain/entities/item.entity';
-import { Project } from '../../domain/entities/project.entity';
-import { Warehouse } from '../../domain/entities/warehouse.entity';
 import { CreateAdvancedProductLine } from '../../domain/entities/advanced-product.entity';
 import { BatchNumbers } from '../../domain/entities/batch-numbers.entity';
 import { logger } from '../../core/logging/logger';
@@ -40,8 +32,11 @@ interface AdvancedProductLine {
   itemName: string;
   projectCode: string;
   costingCode: string;
+  costingCodeName: string;
   quantity: string;
   warehouseCode: string;
+  batchNumber: string;
+  requiresBatch: boolean;
   availableWarehouses: Array<{ code: string; name: string; inStock: number }>;
   maxQuantity?: number;
   baseEntry: number | null;
@@ -78,7 +73,9 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
       // Set dates - try docDueDate first, then docDate as fallback
       const dateToUse = sourceConsumer.docDueDate || sourceConsumer.docDate;
       if (dateToUse) {
-        const parsedDate = new Date(dateToUse);
+        // Parse date string (YYYY-MM-DD) to avoid timezone issues
+        const [year, month, day] = dateToUse.split('-').map(Number);
+        const parsedDate = new Date(year, month - 1, day); // month is 0-indexed
         logger.debug('CreateAdvancedProductScreen: Setting date', { dateToUse, parsedDate });
         setDocDueDate(parsedDate);
       }
@@ -123,34 +120,45 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
         return consumed < line.quantity; // Only include lines with remaining quantity
       });
       
-      const consumerLines: AdvancedProductLine[] = availableLines.map((line, index) => ({
-        id: Date.now().toString() + index,
-        itemCode: line.itemCode || '',
-        itemName: line.itemDescription || '',
-        projectCode: line.projectCode || '',
-        costingCode: line.costingCode || '',
-        quantity: line.lineNumber !== undefined ? (line.quantity - (consumedQuantities[line.lineNumber] || 0)).toString() : line.quantity.toString(),
-        warehouseCode: line.warehouseCode || '',
-        availableWarehouses: [],
-        maxQuantity: line.lineNumber !== undefined ? (line.quantity - (consumedQuantities[line.lineNumber] || 0)) : line.quantity,
-        baseEntry: sourceConsumer.docEntry || null,
-        baseLine: line.lineNumber,
-        baseType: 60,
-        batchNumbers: line.batchNumbers,
-      }));
+      const consumerLines: AdvancedProductLine[] = availableLines.map((line, index) => {
+        // Get costing code name from profit centers
+        const costingCodeName = line.costingCode 
+          ? profitCenters.find(pc => pc.centerCode === line.costingCode)?.centerName || line.costingCode
+          : '';
+        
+        // Extract batch number from batchNumbers array
+        const extractedBatchNumber = (line.batchNumbers && line.batchNumbers.length > 0)
+          ? line.batchNumbers[0].batchNumber || ''
+          : '';
+        
+        // Determine if requires batch based on batchNumbers presence
+        const requiresBatch = !!(line.batchNumbers && line.batchNumbers.length > 0);
+
+        return {
+          id: Date.now().toString() + index,
+          itemCode: line.itemCode || '',
+          itemName: line.itemDescription || '',
+          projectCode: line.projectCode || '',
+          costingCode: line.costingCode || '',
+          costingCodeName,
+          quantity: line.lineNumber !== undefined ? (line.quantity - (consumedQuantities[line.lineNumber] || 0)).toString() : line.quantity.toString(),
+          warehouseCode: line.warehouseCode || '',
+          batchNumber: extractedBatchNumber,
+          requiresBatch,
+          availableWarehouses: [],
+          maxQuantity: line.lineNumber !== undefined ? (line.quantity - (consumedQuantities[line.lineNumber] || 0)) : line.quantity,
+          baseEntry: sourceConsumer.docEntry || null,
+          baseLine: line.lineNumber,
+          baseType: 60,
+          batchNumbers: line.batchNumbers,
+        };
+      });
+      
       setLines(consumerLines);
     }
-  }, [sourceConsumer, existingEntries]);
+  }, [sourceConsumer, existingEntries, profitCenters]);
 
   const { mutate: createAdvancedProduct, isPending } = useCreateAdvancedProduct({ consumerId });
-
-  const handleDueDateChange = (date: Date) => {
-    setDocDueDate(date);
-    // Clear error when date is selected
-    if (errors.docDueDate) {
-      setErrors({ ...errors, docDueDate: '' });
-    }
-  };
 
   const addLine = () => {
     const newLine: AdvancedProductLine = {
@@ -159,8 +167,11 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
       itemName: '',
       projectCode: '',
       costingCode: '',
+      costingCodeName: '',
       quantity: '',
       warehouseCode: '',
+      batchNumber: '',
+      requiresBatch: false,
       availableWarehouses: [],
       maxQuantity: undefined,
       baseEntry: null,
@@ -179,55 +190,13 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
     setLines(lines.filter((line) => line.id !== id));
   };
 
-  const updateLineWarehouse = (id: string, warehouse: Warehouse) => {
-    setLines(
-      lines.map((line) => (line.id === id ? { ...line, warehouseCode: warehouse.warehouseCode } : line))
-    );
-    // Clear warehouse error when selected
-    if (errors[`line-${id}-warehouse`]) {
-      setErrors({ ...errors, [`line-${id}-warehouse`]: '' });
-    }
-  };
-
-  const clearLineWarehouse = (id: string) => {
-    setLines(
-      lines.map((line) => (line.id === id ? { ...line, warehouseCode: '' } : line))
-    );
-  };
-
-  const updateLineProject = (id: string, project: Project) => {
-    setLines(
-      lines.map((line) => (line.id === id ? { ...line, projectCode: project.code } : line))
-    );
-    // Clear error when project is selected
-    if (errors[`line-${id}-project`]) {
-      setErrors({ ...errors, [`line-${id}-project`]: '' });
-    }
-  };
-
-  const clearLineProject = (id: string) => {
-    setLines(
-      lines.map((line) => (line.id === id ? { ...line, projectCode: '' } : line))
-    );
-    // Clear error when project is cleared
-    if (errors[`line-${id}-project`]) {
-      setErrors({ ...errors, [`line-${id}-project`]: '' });
-    }
-  };
-
-  const updateLineCostingCode = (id: string, costingCode: string) => {
-    setLines(
-      lines.map((line) => (line.id === id ? { ...line, costingCode } : line))
-    );
-  };
-
   const updateLineItem = (id: string, item: Item) => {
     // Get all warehouses (no filter needed for entries)
     const availableWarehouses = item.itemWarehouseInfoCollection
       .map(w => ({
         code: w.warehouseCode || '',
         name: w.warehouseCode || '',
-        inStock: w.inStock,
+        inStock: w.inStock ?? 0,
       }));
 
     setLines(
@@ -238,6 +207,8 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
               itemCode: item.itemCode, 
               itemName: item.itemName || '',
               warehouseCode: '', // Reset warehouse selection
+              batchNumber: '',
+              requiresBatch: item.manageBatchNumbers || false,
               availableWarehouses,
             }
           : line
@@ -259,7 +230,10 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
               itemName: '',
               projectCode: '',
               costingCode: '',
+              costingCodeName: '',
               warehouseCode: '',
+              batchNumber: '',
+              requiresBatch: false,
               availableWarehouses: [],
             } 
           : line
@@ -302,7 +276,14 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
     const newErrors: { [key: string]: string } = {};
 
     if (!docDueDate) {
-      newErrors.docDueDate = 'Seleccione la fecha de entrega';
+      // This should not happen if consumer data is loaded correctly
+      logger.error('CreateAdvancedProductScreen: Missing date from consumer');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'No se pudo obtener la fecha de la salida de mercancías',
+      });
+      return false;
     }
 
     if (lines.length === 0) {
@@ -312,9 +293,6 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
     lines.forEach((line) => {
       if (!line.itemCode) {
         newErrors[`line-${line.id}-item`] = 'Seleccione un producto';
-      }
-      if (line.itemCode && !line.warehouseCode) {
-        newErrors[`line-${line.id}-warehouse`] = 'Seleccione un almacén';
       }
       if (!line.quantity || parseFloat(line.quantity) <= 0) {
         newErrors[`line-${line.id}-quantity`] = 'Cantidad inválida';
@@ -349,7 +327,12 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
       costingCode: line.costingCode || undefined,
       baseLine: line.baseLine,
       baseType: line.baseType,
-      batchNumbers: line.batchNumbers && line.batchNumbers.length > 0 ? line.batchNumbers : undefined,
+      batchNumbers: line.batchNumbers && line.batchNumbers.length > 0 
+        ? line.batchNumbers.map(bn => ({
+            batchNumber: bn.batchNumber ? `${bn.batchNumber}.` : '',
+            quantity: parseFloat(line.quantity),
+          }))
+        : undefined,
     }));
 
     const formatDateForApi = (date: Date): string => {
@@ -401,12 +384,23 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
         <Card style={styles.card}>
           <Text style={styles.sectionTitle}>Información General</Text>
 
-          <DatePickerInput
-            label="Fecha de Contabilización"
-            value={docDueDate}
-            onChange={handleDueDateChange}
-            error={errors.docDueDate}
-          />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Fecha de Contabilización</Text>
+            <TextInput
+              style={[styles.input, styles.inputDisabled]}
+              value={docDueDate ? docDueDate.toLocaleDateString('es-ES', { 
+                year: 'numeric', 
+                month: '2-digit', 
+                day: '2-digit' 
+              }) : ''}
+              editable={false}
+              placeholder="Fecha de la salida"
+              placeholderTextColor={theme.colors.textSecondary}
+            />
+            <Text style={styles.helperText}>
+              La fecha se toma automáticamente de la salida de mercancías
+            </Text>
+          </View>
         </Card>
 
         {/* Materials Section */}
@@ -451,50 +445,53 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
                 />
               </View>
 
-              {/* Project Code */}
-              <ProjectSearchInput
-                value={line.projectCode}
-                onSelectProject={(project) => updateLineProject(line.id, project)}
-                onClear={() => clearLineProject(line.id)}
-                label="Proyecto (Opcional)"
-                placeholder="Buscar proyecto..."
-                error={errors[`line-${line.id}-project`]}
-              />
-
-              {/* Costing Code (Cuartel/Profit Center) */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Cuartel (Opcional)</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={line.costingCode}
-                    onValueChange={(value) => updateLineCostingCode(line.id, value)}
-                    enabled={!isLoadingProfitCenters}
-                    style={styles.picker}
-                  >
-                    <Picker.Item 
-                      label="Seleccione cuartel" 
-                      value="" 
-                      color={theme.colors.textSecondary}
-                    />
-                    {profitCenters.map((profitCenter) => (
-                      <Picker.Item
-                        key={profitCenter.centerCode}
-                        label={profitCenter.centerName || profitCenter.centerCode}
-                        value={profitCenter.centerCode}
-                      />
-                    ))}
-                  </Picker>
+              {/* Project Code - Read Only */}
+              {line.projectCode && (
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Proyecto</Text>
+                  <TextInput
+                    style={[styles.input, styles.inputDisabled]}
+                    value={line.projectCode}
+                    editable={false}
+                    placeholder="Proyecto de la salida"
+                    placeholderTextColor={theme.colors.textSecondary}
+                  />
+                  <Text style={styles.helperText}>
+                    El proyecto se toma automáticamente de la salida de mercancías
+                  </Text>
                 </View>
-              </View>
+              )}
 
-              <WarehouseSearchInput
-                label="Almacén *"
-                value={line.warehouseCode}
-                onSelectWarehouse={(warehouse) => updateLineWarehouse(line.id, warehouse)}
-                onClear={() => clearLineWarehouse(line.id)}
-                placeholder="Buscar almacén..."
-                error={errors[`line-${line.id}-warehouse`]}
-              />
+              {/* Costing Code (Cuartel/Profit Center) - Read Only */}
+              {line.costingCode && (
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Cuartel</Text>
+                  <TextInput
+                    style={[styles.input, styles.inputDisabled]}
+                    value={line.costingCodeName}
+                    editable={false}
+                    placeholder="Cuartel de la salida"
+                    placeholderTextColor={theme.colors.textSecondary}
+                  />
+                  <Text style={styles.helperText}>
+                    El cuartel se toma automáticamente de la salida de mercancías
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Almacén</Text>
+                <TextInput
+                  style={[styles.input, styles.inputDisabled]}
+                  value={line.warehouseCode}
+                  editable={false}
+                  placeholder="Almacén de la salida"
+                  placeholderTextColor={theme.colors.textSecondary}
+                />
+                <Text style={styles.helperText}>
+                  El almacén se toma automáticamente de la salida de mercancías
+                </Text>
+              </View>
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>
@@ -515,6 +512,22 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
                   <Text style={styles.errorText}>{errors[`line-${line.id}-quantity`]}</Text>
                 )}
               </View>
+
+              {line.requiresBatch && (
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Lote</Text>
+                  <TextInput
+                    style={[styles.input, styles.inputDisabled]}
+                    value={line.batchNumber}
+                    editable={false}
+                    placeholder="Lote de la salida"
+                    placeholderTextColor={theme.colors.textSecondary}
+                  />
+                  <Text style={styles.helperText}>
+                    El lote se toma automáticamente de la salida de mercancías
+                  </Text>
+                </View>
+              )}
             </View>
           ))}
         </Card>
@@ -613,6 +626,12 @@ const styles = StyleSheet.create({
     color: theme.colors.error,
     marginTop: theme.spacing.xs,
   },
+  helperText: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
+    fontStyle: 'italic',
+  },
   addButton: {
     backgroundColor: theme.colors.primary,
     paddingVertical: theme.spacing.md,
@@ -653,16 +672,5 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: theme.spacing.md,
-  },
-  pickerContainer: {
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.borderRadius.md,
-    overflow: 'hidden',
-  },
-  picker: {
-    height: Platform.OS === 'ios' ? 180 : 50,
-    color: theme.colors.text,
   },
 });

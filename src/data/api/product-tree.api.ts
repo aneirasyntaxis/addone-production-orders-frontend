@@ -2,6 +2,7 @@
 import { apiClient } from './api-client';
 import { ApiResponse } from '../dtos/company.dto';
 import { logger } from '../../core/logging/logger';
+import { ItemWarehouseInfoDto } from '../dtos/item.dto';
 
 export interface ProductTreeLineDto {
   itemCode: string;
@@ -29,6 +30,8 @@ export interface ProductTreeLineDto {
   visualOrder: number;
   itemName: string;
   u_Clase?: string;
+  manageBatchNumbers?: boolean;
+  itemWarehouseInfoCollection?: ItemWarehouseInfoDto[];
 }
 
 export interface ProductTreeDto {
@@ -50,6 +53,7 @@ export interface ProductTreeDto {
   u_TipoProceso?: string;
   productTreeLines: ProductTreeLineDto[];
   productTreeStages: any[];
+  itemWarehouseInfoCollection?: ItemWarehouseInfoDto[];
 }
 
 export class ProductTreeApi {

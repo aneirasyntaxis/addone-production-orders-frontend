@@ -127,6 +127,12 @@ export const HomeScreen: React.FC = () => {
           <Text style={styles.orderNumber}>OF #{item.documentNumber || 'N/A'}</Text>
         </View>
         <View style={styles.orderHeaderCenter}>
+          <View style={[styles.consumptionBadge, getConsumptionStyle(getConsumptionStatus(item))]}>
+            <Text style={styles.consumptionText}>{getConsumptionStatus(item)}</Text>
+          </View>
+          <View style={[styles.receiptBadge, getReceiptStyle(getReceiptStatus(item))]}>
+            <Text style={styles.receiptText}>{getReceiptStatus(item)}</Text>
+          </View>
           <View style={[styles.statusBadge, getStatusStyle(item.productionOrderStatus)]}>
             <Text style={styles.statusText}>{getStatusText(item.productionOrderStatus)}</Text>
           </View>
@@ -184,6 +190,84 @@ export const HomeScreen: React.FC = () => {
         return 'Cerrada';
       default:
         return status || 'N/A';
+    }
+  };
+
+  const getConsumptionStatus = (order: ProductionOrder): string => {
+    // Filtrar solo líneas que no sean texto
+    const materialLines = order.productionOrderLines.filter(line => line.itemType !== 'pit_Text');
+    
+    if (materialLines.length === 0) return '📋 Sin Emisión';
+    
+    let totalLines = 0;
+    let partialLines = 0;
+    let noConsumptionLines = 0;
+    
+    materialLines.forEach(line => {
+      const planned = line.plannedQuantity || 0;
+      const issued = line.issuedQuantity || 0;
+      
+      if (issued === 0) {
+        noConsumptionLines++;
+      } else if (issued >= planned) {
+        totalLines++;
+      } else {
+        partialLines++;
+      }
+    });
+    
+    // Todas consumidas totalmente
+    if (totalLines === materialLines.length) {
+      return '📋 Emisión Completada';
+    }
+    
+    // Al menos una línea con consumo parcial o total
+    if (partialLines > 0 || totalLines > 0) {
+      return '📋 Emisión Parcial';
+    }
+    
+    // Sin consumo
+    return '📋 Sin Emisión';
+  };
+
+  const getConsumptionStyle = (status: string) => {
+    switch (status) {
+      case '📋 Emisión Completada':
+        return styles.consumptionTotal;
+      case '📋 Emisión Parcial':
+        return styles.consumptionPartial;
+      case '📋 Sin Emisión':
+        return styles.consumptionNone;
+      default:
+        return styles.consumptionNone;
+    }
+  };
+
+  const getReceiptStatus = (order: ProductionOrder): string => {
+    const planned = order.plannedQuantity || 0;
+    const completed = order.completedQuantity || 0;
+    
+    if (completed === 0) {
+      return '📦 Sin Recibo';
+    }
+    
+    if (completed >= planned) {
+      return '📦 Recibo Completado';
+    }
+    
+    return '📦 Recibo Parcial';
+  };
+
+  const getReceiptStyle = (status: string) => {
+    switch (status) {
+      case '📦 Recibo Completado':
+        return styles.consumptionTotal;
+      case '📦 Recibo Parcial':
+        return styles.consumptionPartial;
+      case '📦 Sin Recibo':
+        return styles.consumptionNone;
+      default:
+        return styles.consumptionNone;
     }
   };
 
@@ -383,6 +467,48 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.xs,
     fontWeight: '600',
     color: theme.colors.background,
+  },
+  consumptionBadge: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
+    alignSelf: 'flex-start',
+    marginBottom: theme.spacing.xs,
+  },
+  consumptionText: {
+    fontSize: theme.fontSize.xs,
+    fontWeight: '600',
+    color: theme.colors.background,
+  },
+  consumptionTotal: {
+    backgroundColor: '#10b981', // green-500
+  },
+  consumptionPartial: {
+    backgroundColor: '#f59e0b', // amber-500
+  },
+  consumptionNone: {
+    backgroundColor: '#6b7280', // gray-500
+  },
+  receiptBadge: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
+    alignSelf: 'flex-start',
+    marginBottom: theme.spacing.xs,
+  },
+  receiptText: {
+    fontSize: theme.fontSize.xs,
+    fontWeight: '600',
+    color: theme.colors.background,
+  },
+  receiptTotal: {
+    backgroundColor: '#8b5cf6', // violet-500
+  },
+  receiptPartial: {
+    backgroundColor: '#ec4899', // pink-500
+  },
+  receiptNone: {
+    backgroundColor: '#9ca3af', // gray-400
   },
   statusReleased: {
     backgroundColor: theme.colors.success,

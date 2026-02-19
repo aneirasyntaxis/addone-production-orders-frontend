@@ -1,5 +1,6 @@
 // Data - Consumer DTOs
 import { BatchNumbersDto } from './batch-numbers.dto';
+import { ItemWarehouseInfoDto } from './item.dto';
 
 export interface ConsumerLineDto {
   docEntry?: number;
@@ -13,6 +14,8 @@ export interface ConsumerLineDto {
   projectCode?: string;
   costingCode?: string;
   batchNumbers?: BatchNumbersDto[];
+  manageBatchNumbers?: boolean;
+  itemWarehouseInfoCollection?: ItemWarehouseInfoDto[];
 }
 
 export interface ConsumerDto {
@@ -34,6 +37,7 @@ export interface CreateConsumerLineDto {
   BaseEntry: number | null;
   BaseLine?: number;
   BaseType?: number;
+  BatchNumbers?: BatchNumbersDto[];
 }
 
 export interface CreateConsumerDto {

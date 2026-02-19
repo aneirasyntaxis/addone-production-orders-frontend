@@ -3,6 +3,10 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 import { API_CONFIG } from '../../core/constants/app.constants';
 import { AppError } from '../../core/errors/error-handler';
 import { logger } from '../../core/logging/logger';
+import { storageService } from '../storage/storage.service';
+import { authEvents } from '../../core/events/auth-events';
+
+const TOKEN_KEY = 'auth_token';
 
 export class ApiClient {
   private client: AxiosInstance;
@@ -21,15 +25,25 @@ export class ApiClient {
   }
 
   private setupInterceptors() {
-    // Request interceptor
+    // Request interceptor - Add JWT token to headers
     this.client.interceptors.request.use(
-      (config) => {
+      async (config) => {
         const fullUrl = `${config.baseURL || ''}${config.url}`;
         logger.logApiRequest(
           config.method?.toUpperCase() || 'UNKNOWN',
-          fullUrl, // Logueamos la URL completa
+          fullUrl,
           config.data
         );
+
+        // Add JWT token to Authorization header if available
+        const token = await storageService.getItem<string>(TOKEN_KEY);
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+          logger.info('JWT token added to request', { hasToken: true });
+        } else {
+          logger.warn('No JWT token found in storage');
+        }
+
         return config;
       },
       (error) => {
@@ -49,13 +63,22 @@ export class ApiClient {
         );
         return response;
       },
-      (error: AxiosError) => {
+      async (error: AxiosError) => {
         const appError = this.handleError(error);
         logger.logApiError(
           error.config?.method?.toUpperCase() || 'UNKNOWN',
           error.config?.url || '',
           appError
         );
+
+        // Handle 401 Unauthorized - clear token and trigger logout
+        if (error.response?.status === 401) {
+          logger.warn('Received 401 Unauthorized - clearing authentication');
+          await this.clearAuthToken();
+          // Emit event to notify AuthContext
+          authEvents.emit('unauthorized');
+        }
+
         return Promise.reject(appError);
       }
     );
@@ -65,6 +88,13 @@ export class ApiClient {
     if (error.response) {
       const data = error.response.data as any;
       const message = data?.message || data?.errors?.[0] || 'Error en la solicitud';
+      
+      // Si es 401, el token expiró o es inválido
+      if (error.response.status === 401) {
+        logger.warn('Unauthorized request - token may be expired or invalid');
+        // El AuthContext manejará esto con un interceptor
+      }
+      
       return new AppError(message, 'API_ERROR', error.response.status);
     }
 
@@ -98,12 +128,21 @@ export class ApiClient {
     return response.data;
   }
 
-  setAuthToken(token: string) {
-    this.client.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  // Token management methods
+  async setAuthToken(token: string) {
+    await storageService.setItem(TOKEN_KEY, token);
+    logger.info('JWT token stored in AsyncStorage', { tokenLength: token.length });
   }
 
-  clearAuthToken() {
-    delete this.client.defaults.headers.common['Authorization'];
+  async clearAuthToken() {
+    await storageService.removeItem(TOKEN_KEY);
+    logger.info('JWT token cleared from AsyncStorage');
+  }
+
+  async getAuthToken(): Promise<string | null> {
+    const token = await storageService.getItem<string>(TOKEN_KEY);
+    logger.info('JWT token retrieved from AsyncStorage', { hasToken: !!token });
+    return token;
   }
 }
 

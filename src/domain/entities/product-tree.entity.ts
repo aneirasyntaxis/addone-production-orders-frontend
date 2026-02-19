@@ -1,4 +1,6 @@
 // Domain - Product Tree Entity
+import { ItemWarehouseInfo } from './item.entity';
+
 export interface ProductTreeLine {
   itemCode: string;
   itemName: string;
@@ -7,6 +9,8 @@ export interface ProductTreeLine {
   itemType: string;
   issueMethod?: string;
   lineText?: string;
+  manageBatchNumbers?: boolean;
+  itemWarehouseInfoCollection?: ItemWarehouseInfo[];
 }
 
 export interface ProductTree {
@@ -15,4 +19,5 @@ export interface ProductTree {
   quantity: number;
   warehouse: string;
   productTreeLines: ProductTreeLine[];
+  itemWarehouseInfoCollection?: ItemWarehouseInfo[];
 }

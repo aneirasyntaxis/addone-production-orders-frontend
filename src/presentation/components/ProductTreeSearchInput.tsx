@@ -13,6 +13,7 @@ import {
 import { theme } from '../theme/theme';
 import { useProductTreeSearch } from '../hooks/useProductTreeSearch';
 import { ProductTree } from '../../domain/entities/product-tree.entity';
+import { SEARCH_MIN_CHARS } from '../../core/config/search.config';
 
 interface ProductTreeSearchInputProps {
   value: string;
@@ -34,20 +35,48 @@ export const ProductTreeSearchInput: React.FC<ProductTreeSearchInputProps> = ({
   const [searchText, setSearchText] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedTree, setSelectedTree] = useState<ProductTree | null>(null);
+  const [stockInfo, setStockInfo] = useState<{ [treeCode: string]: string }>({});
 
   const { productTrees, isSearching } = useProductTreeSearch(searchText, 10);
+
+  // Load stock information for each product tree
+  React.useEffect(() => {
+    if (productTrees.length > 0) {
+      const newStockInfo: { [treeCode: string]: string } = {};
+      
+      productTrees.forEach((tree) => {
+        // Usar itemWarehouseInfoCollection del ProductTree si está disponible
+        if (tree.itemWarehouseInfoCollection && tree.itemWarehouseInfoCollection.length > 0) {
+          const warehousesWithStock = tree.itemWarehouseInfoCollection
+            .filter(wh => (wh.inStock ?? 0) > 0)
+            .map(wh => `${wh.warehouseCode} (${wh.inStock})`)
+            .join(' - ');
+          
+          if (warehousesWithStock) {
+            newStockInfo[tree.treeCode] = warehousesWithStock;
+          }
+        }
+      });
+      
+      setStockInfo(newStockInfo);
+    }
+  }, [productTrees]);
 
   const handleTextChange = (text: string) => {
     setSearchText(text);
     setSelectedTree(null);
     onClear();
-    
-    if (text.length >= 3) {
+    // El dropdown se controlará automáticamente basado en si hay resultados
+  };
+
+  // Auto-open dropdown when search results are available
+  React.useEffect(() => {
+    if (searchText.length >= SEARCH_MIN_CHARS && productTrees.length > 0 && !selectedTree) {
       setShowDropdown(true);
-    } else {
+    } else if (searchText.length < SEARCH_MIN_CHARS) {
       setShowDropdown(false);
     }
-  };
+  }, [productTrees, searchText, selectedTree]);
 
   const handleSelectTree = (tree: ProductTree) => {
     setSelectedTree(tree);
@@ -127,6 +156,11 @@ export const ProductTreeSearchInput: React.FC<ProductTreeSearchInputProps> = ({
                   <Text style={styles.treeDescription} numberOfLines={1}>
                     {item.productDescription || 'Sin descripción'}
                   </Text>
+                  {stockInfo[item.treeCode] && (
+                    <Text style={styles.stockInfo}>
+                      Stock: {stockInfo[item.treeCode]}
+                    </Text>
+                  )}
                   <Text style={styles.treeInfo}>
                     {item.productTreeLines.length} materiales
                   </Text>
@@ -228,6 +262,12 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.sm,
     color: theme.colors.textSecondary,
     marginBottom: 2,
+  },
+  stockInfo: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.success,
+    marginBottom: 2,
+    fontWeight: '500',
   },
   treeInfo: {
     fontSize: theme.fontSize.xs,

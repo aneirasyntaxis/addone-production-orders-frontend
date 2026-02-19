@@ -25,6 +25,8 @@ export class ConsumerMapper {
       projectCode: dto.projectCode ?? undefined,
       costingCode: dto.costingCode ?? undefined,
       batchNumbers: dto.batchNumbers,
+      manageBatchNumbers: dto.manageBatchNumbers,
+      itemWarehouseInfoCollection: dto.itemWarehouseInfoCollection,
     };
   }
 

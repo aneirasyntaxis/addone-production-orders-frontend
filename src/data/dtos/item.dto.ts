@@ -1,5 +1,6 @@
-// Domain - Item Entity
-export interface ItemWarehouseInfo {
+// Data - Item DTOs
+
+export interface ItemWarehouseInfoDto {
   minimalStock?: number;
   maximalStock?: number;
   minimalOrder?: number;
@@ -10,12 +11,12 @@ export interface ItemWarehouseInfo {
   countedQuantity?: number;
 }
 
-export interface Item {
+export interface ItemDto {
   itemCode: string;
   itemName?: string;
   itemsGroupCode?: number;
   foreignName?: string;
   valid: boolean;
   manageBatchNumbers: boolean;
-  itemWarehouseInfoCollection: ItemWarehouseInfo[];
+  itemWarehouseInfoCollection: ItemWarehouseInfoDto[];
 }

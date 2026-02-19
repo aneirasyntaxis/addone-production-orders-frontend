@@ -22,4 +22,6 @@ export interface SapToken {
 export interface AuthSession {
   user: User;
   sapToken: SapToken;
+  token?: string; // JWT token
+  tokenExpiresAt?: string; // ISO 8601 date string
 }

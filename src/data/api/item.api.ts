@@ -1,27 +1,10 @@
 // Data - Item API
 import { apiClient } from './api-client';
 import { ApiResponse } from '../dtos/company.dto';
+import { ItemDto, ItemWarehouseInfoDto } from '../dtos/item.dto';
 
-export interface ItemWarehouseInfoDto {
-  minimalStock: number;
-  maximalStock: number;
-  minimalOrder: number;
-  warehouseCode?: string;
-  inStock: number;
-  committed: number;
-  ordered: number;
-  countedQuantity: number;
-}
-
-export interface ItemDto {
-  itemCode: string;
-  itemName?: string;
-  itemsGroupCode?: number;
-  foreignName?: string;
-  valid: boolean;
-  manageBatchNumbers: boolean;
-  itemWarehouseInfoCollection: ItemWarehouseInfoDto[];
-}
+// Re-exportar para compatibilidad con imports existentes
+export type { ItemDto, ItemWarehouseInfoDto };
 
 export class ItemApi {
   async getByName(name: string): Promise<ItemDto[]> {

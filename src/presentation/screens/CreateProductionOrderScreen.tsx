@@ -7,7 +7,10 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Toast from 'react-native-toast-message';
@@ -25,6 +28,8 @@ import { Warehouse } from '../../domain/entities/warehouse.entity';
 import { ProductTree } from '../../domain/entities/product-tree.entity';
 import { CreateProductionOrderLine } from '../../domain/entities/production-order.entity';
 import { logger } from '../../core/logging/logger';
+import { productTreeApi } from '../../data/api/product-tree.api';
+import { warehouseApi } from '../../data/api/warehouse.api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateProductionOrder'>;
 
@@ -40,6 +45,10 @@ interface ProductionOrderLine {
   productionOrderIssueType: string;
   itemType?: string;
   lineText?: string;
+  batchNumber: string;
+  requiresBatch: boolean;
+  defaultWarehouse: string;
+  availableWarehouses: Array<{ code: string; name: string; inStock: number }>;
 }
 
 type IssueMethodDisplay = 'Manual' | 'Notificación';
@@ -57,51 +66,153 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
   const [headerItemNo, setHeaderItemNo] = useState('');
   const [headerItemName, setHeaderItemName] = useState('');
   const [plannedQuantity, setPlannedQuantity] = useState('');
-  const [postingDate, setPostingDate] = useState<Date | null>(null);
+  const [postingDate, setPostingDate] = useState<Date | null>(new Date());
+  const [headerWarehouseCode, setHeaderWarehouseCode] = useState('');
   const [remarks, setRemarks] = useState('');
   const [journalRemarks, setJournalRemarks] = useState('');
   const [lines, setLines] = useState<ProductionOrderLine[]>([]);
+  const [isLoadingItems, setIsLoadingItems] = useState(false);
+  const [isLoadingProductTree, setIsLoadingProductTree] = useState(false);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [isLoadingWarehouses, setIsLoadingWarehouses] = useState(true);
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const { mutate: createOrder, isPending } = useCreateProductionOrder();
 
-  const handleProductTreeSelect = (productTree: ProductTree) => {
-    logger.debug('CreateProductionOrderScreen: Product tree selected', {
+  // Cargar warehouses al montar el componente
+  useEffect(() => {
+    const loadWarehouses = async () => {
+      try {
+        logger.debug('CreateProductionOrderScreen: Loading warehouses');
+        const warehousesData = await warehouseApi.getAll();
+        setWarehouses(warehousesData.map(dto => ({ warehouseCode: dto.warehouseCode })));
+        logger.debug('CreateProductionOrderScreen: Warehouses loaded', { count: warehousesData.length });
+      } catch (error) {
+        logger.error('CreateProductionOrderScreen: Error loading warehouses', { error });
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'No se pudo cargar la información de almacenes',
+        });
+      } finally {
+        setIsLoadingWarehouses(false);
+      }
+    };
+
+    loadWarehouses();
+  }, []);
+
+  const handleProductTreeSelect = async (productTree: ProductTree) => {
+    logger.debug('CreateProductionOrderScreen: Product tree selected from search', {
       treeCode: productTree.treeCode,
-      linesCount: productTree.productTreeLines.length,
-      quantity: productTree.quantity,
     });
 
-    setHeaderItemNo(productTree.treeCode);
-    setHeaderItemName(productTree.productDescription || productTree.treeCode);
-    setPlannedQuantity(productTree.quantity.toString());
+    // Mostrar loading mientras se obtienen los detalles completos
+    setIsLoadingProductTree(true);
 
-    // Clear error
-    if (errors.headerItem) {
-      setErrors({ ...errors, headerItem: '' });
+    try {
+      // Llamar al servicio /{treeCode} para obtener datos completos con manageBatchNumbers e itemWarehouseInfoCollection
+      logger.debug('CreateProductionOrderScreen: Loading full product tree details', {
+        treeCode: productTree.treeCode,
+      });
+
+      const fullProductTree = await productTreeApi.getByTreeCode(productTree.treeCode);
+
+      if (!fullProductTree) {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'No se pudo cargar la información completa del producto',
+        });
+        setIsLoadingProductTree(false);
+        return;
+      }
+
+      logger.debug('CreateProductionOrderScreen: Full product tree loaded', {
+        treeCode: fullProductTree.treeCode,
+        linesCount: fullProductTree.productTreeLines.length,
+        quantity: fullProductTree.quantity,
+      });
+
+      setHeaderItemNo(fullProductTree.treeCode);
+      setHeaderItemName(fullProductTree.productDescription || fullProductTree.treeCode);
+      setPlannedQuantity(fullProductTree.quantity.toString());
+      setHeaderWarehouseCode(fullProductTree.warehouse || '');
+
+      // Clear error
+      if (errors.headerItem) {
+        setErrors({ ...errors, headerItem: '' });
+      }
+
+      // Load product tree lines with full information (manageBatchNumbers and warehouse info)
+      const newLines: ProductionOrderLine[] = fullProductTree.productTreeLines.map((line, index) => {
+        const defaultWarehouse = line.warehouse || '';
+        
+        // Filter warehouses: show those with stock > 0, and always include default warehouse
+        // pit_Resource y pit_Text no necesitan almacén
+        let availableWarehouses: Array<{ code: string; name: string; inStock: number }> = [];
+        
+        if (line.itemType === 'pit_Item') {
+          // Filtrar almacenes con stock > 0 O que sean el almacén por defecto
+          if (line.itemWarehouseInfoCollection && line.itemWarehouseInfoCollection.length > 0) {
+            availableWarehouses = line.itemWarehouseInfoCollection
+              .filter(w => {
+                const hasStock = (w.inStock ?? 0) > 0;
+                const isDefault = w.warehouseCode === defaultWarehouse;
+                return hasStock || isDefault;
+              })
+              .map(w => ({
+                code: w.warehouseCode || '',
+                name: w.warehouseCode || '',
+                inStock: w.inStock ?? 0,
+              }));
+          }
+
+          // SIEMPRE agregar el almacén por defecto si existe y no está en la lista
+          if (defaultWarehouse && !availableWarehouses.some(w => w.code === defaultWarehouse)) {
+            availableWarehouses.unshift({
+              code: defaultWarehouse,
+              name: defaultWarehouse,
+              inStock: 0,
+            });
+          }
+        }
+        
+        return {
+          id: `${Date.now()}-${index}`,
+          itemNo: line.itemCode,
+          itemName: line.itemName,
+         // baseQuantity: '',
+          plannedQuantity: line.quantity.toString(),
+          warehouseCode: defaultWarehouse,
+          productionOrderIssueType: line.issueMethod || 'im_Manual',
+          itemType: line.itemType,
+          lineText: line.lineText || '',
+          batchNumber: '',
+          requiresBatch: line.itemType === 'pit_Item' ? (line.manageBatchNumbers || false) : false,
+          defaultWarehouse,
+          availableWarehouses,
+        };
+      });
+
+      setLines(newLines);
+
+      Toast.show({
+        type: 'success',
+        text1: 'Lista Cargada',
+        text2: `Se cargaron ${newLines.length} materiales de la lista estándar`,
+      });
+    } catch (error) {
+      logger.error('CreateProductionOrderScreen: Error loading full product tree', { error });
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'No se pudo cargar la información del producto',
+      });
+    } finally {
+      setIsLoadingProductTree(false);
     }
-
-    // Load product tree lines immediately
-    const newLines: ProductionOrderLine[] = productTree.productTreeLines.map((line, index) => ({
-      id: `${Date.now()}-${index}`,
-      itemNo: line.itemCode,
-      itemName: line.itemName,
-     // baseQuantity: '',
-      plannedQuantity: line.quantity.toString(),
-      warehouseCode: line.warehouse || '',
-      productionOrderIssueType: line.issueMethod || 'im_Manual',
-      itemType: line.itemType,
-      lineText: line.lineText || '',
-    }));
-
-    setLines(newLines);
-
-    Toast.show({
-      type: 'success',
-      text1: 'Lista Cargada',
-      text2: `Se cargaron ${newLines.length} materiales de la lista estándar`,
-    });
   };
 
   const handleModeChange = (newMode: OrderMode) => {
@@ -111,11 +222,13 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
       setHeaderItemNo('');
       setHeaderItemName('');
       setPlannedQuantity('');
-      setPostingDate(null);
+      setPostingDate(new Date());
+      setHeaderWarehouseCode('');
       setRemarks('');
       setJournalRemarks('');
       setLines([]);
       setErrors({});
+      setIsLoadingProductTree(false);
       logger.info('CreateProductionOrderScreen: Mode changed, form reset', { newMode });
     }
   };
@@ -134,7 +247,9 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
   const handleHeaderItemClear = () => {
     setHeaderItemNo('');
     setHeaderItemName('');
+    setHeaderWarehouseCode('');
     setLines([]);
+    setIsLoadingProductTree(false);
   };
 
   const handlePlannedQuantityChange = (value: string) => {
@@ -164,6 +279,18 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
     }
   };
 
+  const handleHeaderWarehouseSelect = (warehouse: Warehouse) => {
+    setHeaderWarehouseCode(warehouse.warehouseCode);
+    // Clear error when warehouse is selected
+    if (errors.headerWarehouse) {
+      setErrors({ ...errors, headerWarehouse: '' });
+    }
+  };
+
+  const handleHeaderWarehouseClear = () => {
+    setHeaderWarehouseCode('');
+  };
+
   const addLine = () => {
     const newLine: ProductionOrderLine = {
       id: Date.now().toString(),
@@ -173,6 +300,10 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
       plannedQuantity: '',
       warehouseCode: '',
       productionOrderIssueType: 'im_Manual',
+      batchNumber: '',
+      requiresBatch: false,
+      defaultWarehouse: '',
+      availableWarehouses: [],
     };
     setLines([...lines, newLine]);
     // Clear "no materials" error when adding a line
@@ -186,10 +317,29 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
   };
 
   const updateLineItem = (id: string, item: Item) => {
+    // Filter warehouses: show those with stock > 0
+    // Note: In special mode there's no default warehouse, so show all with stock > 0
+    const availableWarehouses = item.itemWarehouseInfoCollection
+      .filter(w => (w.inStock ?? 0) > 0)
+      .map(w => ({
+        code: w.warehouseCode || '',
+        name: w.warehouseCode || '',
+        inStock: w.inStock ?? 0,
+      }));
+
     setLines(
       lines.map((line) =>
         line.id === id
-          ? { ...line, itemNo: item.itemCode, itemName: item.itemName || '' }
+          ? { 
+              ...line, 
+              itemNo: item.itemCode, 
+              itemName: item.itemName || '',
+              batchNumber: '',
+              requiresBatch: item.manageBatchNumbers || false,
+              warehouseCode: '', // Reset warehouse selection
+              defaultWarehouse: '',
+              availableWarehouses,
+            }
           : line
       )
     );
@@ -202,14 +352,25 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
   const clearLineItem = (id: string) => {
     setLines(
       lines.map((line) =>
-        line.id === id ? { ...line, itemNo: '', itemName: '' } : line
+        line.id === id 
+          ? { 
+              ...line, 
+              itemNo: '', 
+              itemName: '',
+              batchNumber: '',
+              requiresBatch: false,
+              warehouseCode: '',
+              defaultWarehouse: '',
+              availableWarehouses: [],
+            } 
+          : line
       )
     );
   };
 
-  const updateLineWarehouse = (id: string, warehouse: Warehouse) => {
+  const updateLineWarehouse = (id: string, warehouseCode: string) => {
     setLines(
-      lines.map((line) => (line.id === id ? { ...line, warehouseCode: warehouse.warehouseCode } : line))
+      lines.map((line) => (line.id === id ? { ...line, warehouseCode } : line))
     );
     // Clear warehouse error when selected
     if (errors[`line-${id}-warehouse`]) {
@@ -217,10 +378,16 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
     }
   };
 
-  const clearLineWarehouse = (id: string) => {
+  const updateLineBatchNumber = (id: string, value: string) => {
+    // Limit to 40 characters
+    const limitedValue = value.slice(0, 40);
     setLines(
-      lines.map((line) => (line.id === id ? { ...line, warehouseCode: '' } : line))
+      lines.map((line) => (line.id === id ? { ...line, batchNumber: limitedValue } : line))
     );
+    // Clear batch error when value is entered
+    if (errors[`line-${id}-batchNumber`] && limitedValue) {
+      setErrors({ ...errors, [`line-${id}-batchNumber`]: '' });
+    }
   };
 
   const updateLine = (id: string, field: keyof ProductionOrderLine, value: string) => {
@@ -265,6 +432,10 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
       newErrors.postingDate = 'Seleccione la fecha de publicación';
     }
 
+    if (!headerWarehouseCode) {
+      newErrors.headerWarehouse = 'Seleccione un almacén';
+    }
+
     if (lines.length === 0) {
       newErrors.lines = 'Debe agregar al menos un material';
     }
@@ -275,11 +446,15 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
         if (!line.itemNo) {
           newErrors[`line-${line.id}-item`] = 'Seleccione un producto';
         }
-        if (!line.warehouseCode) {
+        // pit_Resource no requiere almacén (son recursos como mano de obra)
+        if (line.itemType !== 'pit_Resource' && !line.warehouseCode) {
           newErrors[`line-${line.id}-warehouse`] = 'Seleccione un almacén';
         }
         if (!line.plannedQuantity || parseFloat(line.plannedQuantity) <= 0) {
           newErrors[`line-${line.id}-quantity`] = 'Cantidad inválida';
+        }
+        if (line.requiresBatch && !line.batchNumber) {
+          newErrors[`line-${line.id}-batchNumber`] = 'El lote es obligatorio para este producto';
         }
       }
     });
@@ -304,10 +479,14 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
       itemNo: line.itemNo,
       baseQuantity: undefined,
       plannedQuantity: line.itemType === 'pit_Text' ? undefined : parseFloat(line.plannedQuantity),
-      warehouseCode: line.itemType === 'pit_Text' ? undefined : line.warehouseCode,
+      warehouseCode: (line.itemType === 'pit_Text' || line.itemType === 'pit_Resource') ? undefined : line.warehouseCode,
       productionOrderIssueType: line.itemType === 'pit_Text' ? undefined : 'im_Manual',
       itemType: line.itemType,
       lineText: line.itemType === 'pit_Text' ? line.lineText : undefined,
+      batchNumbers: (line.itemType !== 'pit_Text' && line.requiresBatch) ? [{
+        batchNumber: line.batchNumber,
+        quantity: parseFloat(line.plannedQuantity),
+      }] : undefined,
     }));
 
     const formatDateForApi = (date: Date): string => {
@@ -319,6 +498,7 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
 
     const order = {
       itemNo: headerItemNo,
+      warehouse: headerWarehouseCode,
       plannedQuantity: parseFloat(plannedQuantity),
       dueDate: formatDateForApi(postingDate!),
       postingDate: formatDateForApi(postingDate!),
@@ -358,6 +538,16 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Loading Warehouses Message */}
+        {isLoadingWarehouses && (
+          <Card style={styles.card}>
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+              <Text style={[styles.loadingText, styles.preparingText]}>Preparando información...</Text>
+            </View>
+          </Card>
+        )}
+
         {/* General Info */}
         <Card style={styles.card}>
           <Text style={styles.sectionTitle}>Información General</Text>
@@ -402,23 +592,39 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
           </View>
 
           {mode === 'standard' ? (
-            <ProductTreeSearchInput
-              value={headerItemName}
-              onSelectProductTree={handleProductTreeSelect}
-              onClear={handleHeaderItemClear}
-              label="Producto"
-              placeholder="Buscar producto..."
-              error={errors.headerItem}
-            />
+            <>
+              <View style={isLoadingWarehouses && styles.disabledSection}>
+                <ProductTreeSearchInput
+                  value={headerItemName}
+                  onSelectProductTree={handleProductTreeSelect}
+                  onClear={handleHeaderItemClear}
+                  label="Producto"
+                  placeholder="Buscar producto..."
+                  error={errors.headerItem}
+                />
+                {isLoadingWarehouses && <View style={styles.disabledOverlay} />}
+              </View>
+              {isLoadingProductTree && (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="small" color={theme.colors.primary} />
+                  <Text style={styles.loadingText}>Cargando información del producto...</Text>
+                </View>
+              )}
+            </>
           ) : (
-            <ItemSearchInput
-              value={headerItemName}
-              onSelectItem={handleHeaderItemSelect}
-              onClear={handleHeaderItemClear}
-              label="Producto"
-              placeholder="Buscar producto..."
-              error={errors.headerItem}
-            />
+            <>
+              <View style={isLoadingWarehouses && styles.disabledSection}>
+                <ItemSearchInput
+                  value={headerItemName}
+                  onSelectItem={handleHeaderItemSelect}
+                  onClear={handleHeaderItemClear}
+                  label="Producto"
+                  placeholder="Buscar producto..."
+                  error={errors.headerItem}
+                />
+                {isLoadingWarehouses && <View style={styles.disabledOverlay} />}
+              </View>
+            </>
           )}
 
           <View style={styles.inputGroup}>
@@ -442,6 +648,15 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
             label="Fecha de Publicación"
             placeholder="Seleccionar fecha de publicación"
             error={errors.postingDate}
+          />
+
+          <WarehouseSearchInput
+            label="Almacén"
+            value={headerWarehouseCode}
+            onSelectWarehouse={handleHeaderWarehouseSelect}
+            onClear={handleHeaderWarehouseClear}
+            placeholder="Buscar almacén..."
+            error={errors.headerWarehouse}
           />
 
           <View style={styles.inputGroup}>
@@ -507,14 +722,39 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
                     />
                   </View>
 
-                  <WarehouseSearchInput
-                    label="Almacén *"
-                    value={line.warehouseCode}
-                    onSelectWarehouse={(warehouse) => updateLineWarehouse(line.id, warehouse)}
-                    onClear={() => clearLineWarehouse(line.id)}
-                    placeholder="Buscar almacén..."
-                    error={errors[`line-${line.id}-warehouse`]}
-                  />
+                  {/* pit_Resource (recursos como mano de obra) no requieren almacén */}
+                  {line.itemType !== 'pit_Resource' && (
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.label}>Almacén *</Text>
+                      <View style={[
+                        styles.pickerContainer,
+                        errors[`line-${line.id}-warehouse`] && styles.inputError,
+                      ]}>
+                        <Picker
+                          selectedValue={line.warehouseCode}
+                          onValueChange={(value) => updateLineWarehouse(line.id, value)}
+                          enabled={line.availableWarehouses.length > 0}
+                          style={styles.picker}
+                        >
+                          <Picker.Item 
+                            label="Seleccione almacén" 
+                            value="" 
+                            color={theme.colors.textSecondary}
+                          />
+                          {line.availableWarehouses.map((warehouse) => (
+                            <Picker.Item
+                              key={warehouse.code}
+                              label={`${warehouse.name} (Stock: ${warehouse.inStock ?? 0})`}
+                              value={warehouse.code}
+                            />
+                          ))}
+                        </Picker>
+                      </View>
+                      {errors[`line-${line.id}-warehouse`] && (
+                        <Text style={styles.errorText}>{errors[`line-${line.id}-warehouse`]}</Text>
+                      )}
+                    </View>
+                  )}
                 </>
               )}
 
@@ -560,6 +800,27 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
                   )}
                 </View>
               )}
+
+              {line.itemType !== 'pit_Text' && line.requiresBatch && (
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Lote *</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      errors[`line-${line.id}-batchNumber`] && styles.inputError,
+                    ]}
+                    value={line.batchNumber}
+                    onChangeText={(value) => updateLineBatchNumber(line.id, value)}
+                    placeholder="Ej: LOTE-2024-001"
+                    placeholderTextColor={theme.colors.textSecondary}
+                    maxLength={40}
+                  />
+                  {errors[`line-${line.id}-batchNumber`] && (
+                    <Text style={styles.errorText}>{errors[`line-${line.id}-batchNumber`]}</Text>
+                  )}
+                  <Text style={styles.characterCount}>{line.batchNumber.length}/40 caracteres</Text>
+                </View>
+              )}
             </View>
           ))}
 
@@ -571,12 +832,28 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
             </View>
           ) : null}
 
+          {isLoadingItems && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={theme.colors.primary} />
+              <Text style={styles.loadingText}>Cargando información de productos...</Text>
+            </View>
+          )}
+
           {headerItemNo ? (
             <TouchableOpacity 
               onPress={addLine} 
-              style={styles.addButtonBottom}
+              style={[
+                styles.addButtonBottom,
+                (isLoadingItems || isLoadingProductTree) && styles.addButtonBottomDisabled
+              ]}
+              disabled={isLoadingItems || isLoadingProductTree}
             >
-              <Text style={styles.addButtonBottomText}>+ Agregar Material</Text>
+              <Text style={[
+                styles.addButtonBottomText,
+                (isLoadingItems || isLoadingProductTree) && styles.addButtonBottomTextDisabled
+              ]}>
+                + Agregar Material
+              </Text>
             </TouchableOpacity>
           ) : null}
         </Card>
@@ -584,7 +861,7 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
         <Button
           title={isPending ? 'Creando...' : 'Crear Orden de Fabricación'}
           onPress={handleSubmit}
-          disabled={isPending}
+          disabled={isPending || isLoadingItems || isLoadingProductTree}
           style={styles.submitButton}
         />
       </ScrollView>
@@ -668,6 +945,13 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.md,
     fontWeight: '600',
   },
+  addButtonBottomDisabled: {
+    backgroundColor: theme.colors.border,
+    opacity: 0.6,
+  },
+  addButtonBottomTextDisabled: {
+    color: theme.colors.textSecondary,
+  },
   modeSelector: {
     flexDirection: 'row',
     borderWidth: 1,
@@ -703,6 +987,24 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontStyle: 'italic',
   },
+  preparingText: {
+    fontSize: theme.fontSize.md,
+    fontWeight: '600',
+    marginTop: theme.spacing.xs,
+  },
+  disabledSection: {
+    opacity: 0.5,
+    position: 'relative',
+  },
+  disabledOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 999,
+  },
   inputGroup: {
     marginBottom: theme.spacing.sm,
   },
@@ -728,6 +1030,17 @@ const styles = StyleSheet.create({
   inputDisabled: {
     backgroundColor: theme.colors.surface,
     color: theme.colors.textSecondary,
+  },
+  pickerContainer: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.md,
+    overflow: 'hidden',
+  },
+  picker: {
+    height: Platform.OS === 'ios' ? 180 : 50,
+    color: theme.colors.text,
   },
   textArea: {
     height: 80,

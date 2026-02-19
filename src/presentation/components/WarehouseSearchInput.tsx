@@ -13,6 +13,13 @@ import {
 import { theme } from '../theme/theme';
 import { useWarehouses } from '../hooks/useWarehouses';
 import { Warehouse } from '../../domain/entities/warehouse.entity';
+import { SEARCH_DEBOUNCE_MS } from '../../core/config/search.config';
+
+interface WarehouseWithStock {
+  code: string;
+  name: string;
+  inStock: number;
+}
 
 interface WarehouseSearchInputProps {
   value: string;
@@ -21,6 +28,7 @@ interface WarehouseSearchInputProps {
   placeholder?: string;
   label?: string;
   error?: string;
+  warehouses?: WarehouseWithStock[]; // Optional: if provided, use these instead of fetching
 }
 
 export const WarehouseSearchInput: React.FC<WarehouseSearchInputProps> = ({
@@ -30,19 +38,33 @@ export const WarehouseSearchInput: React.FC<WarehouseSearchInputProps> = ({
   placeholder = 'Buscar almacén...',
   label,
   error,
+  warehouses, // Use provided warehouses if available
 }) => {
   const [searchText, setSearchText] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
 
-  const { data: allWarehouses, isLoading } = useWarehouses();
+  // Only fetch warehouses if not provided via props
+  const { data: fetchedWarehouses, isLoading } = useWarehouses();
+
+  // Convert provided warehouses to Warehouse format or use fetched ones
+  const allWarehouses = useMemo(() => {
+    if (warehouses) {
+      return warehouses.map(w => ({
+        warehouseCode: w.code,
+        warehouseName: w.name,
+        inStock: w.inStock,
+      }));
+    }
+    return fetchedWarehouses || [];
+  }, [warehouses, fetchedWarehouses]);
 
   // Debounce dropdown opening
   React.useEffect(() => {
     if (searchText.length > 0) {
       const timer = setTimeout(() => {
         setShowDropdown(true);
-      }, 700);
+      }, SEARCH_DEBOUNCE_MS);
 
       return () => clearTimeout(timer);
     } else {
@@ -57,7 +79,7 @@ export const WarehouseSearchInput: React.FC<WarehouseSearchInputProps> = ({
     }
     
     const lowerSearch = searchText.toLowerCase();
-    return allWarehouses.filter((warehouse: Warehouse) => 
+    return allWarehouses.filter((warehouse: any) => 
       warehouse.warehouseCode.toLowerCase().includes(lowerSearch)
     );
   }, [allWarehouses, searchText]);
@@ -68,11 +90,14 @@ export const WarehouseSearchInput: React.FC<WarehouseSearchInputProps> = ({
     onClear();
   };
 
-  const handleSelectWarehouse = (warehouse: Warehouse) => {
+  const handleSelectWarehouse = (warehouse: any) => {
     setSelectedWarehouse(warehouse);
     setSearchText('');
     setShowDropdown(false);
-    onSelectWarehouse(warehouse);
+    // Convert to Warehouse format expected by parent
+    onSelectWarehouse({
+      warehouseCode: warehouse.warehouseCode,
+    } as Warehouse);
   };
 
   const displayValue = selectedWarehouse 
@@ -145,14 +170,36 @@ export const WarehouseSearchInput: React.FC<WarehouseSearchInputProps> = ({
             <FlatList
               data={filteredWarehouses}
               keyExtractor={(item) => item.warehouseCode}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.dropdownItem}
-                  onPress={() => handleSelectWarehouse(item)}
-                >
-                  <Text style={styles.warehouseCode}>{item.warehouseCode}</Text>
-                </TouchableOpacity>
-              )}
+              renderItem={({ item }) => {
+                const hasStock = (item as any).inStock === undefined || (item as any).inStock > 0;
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.dropdownItem,
+                      !hasStock && styles.dropdownItemDisabled,
+                    ]}
+                    onPress={() => hasStock && handleSelectWarehouse(item)}
+                    disabled={!hasStock}
+                  >
+                    <View style={styles.warehouseItemContent}>
+                      <Text style={[
+                        styles.warehouseCode,
+                        !hasStock && styles.warehouseCodeDisabled,
+                      ]}>
+                        {item.warehouseCode}
+                      </Text>
+                      {(item as any).inStock !== undefined && (
+                        <Text style={[
+                          styles.stockText,
+                          !hasStock && styles.stockTextDisabled,
+                        ]}>
+                          Stock: {(item as any).inStock}
+                        </Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              }}
               style={styles.dropdown}
               keyboardShouldPersistTaps="handled"
             />
@@ -251,9 +298,30 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
+  dropdownItemDisabled: {
+    opacity: 0.5,
+    backgroundColor: theme.colors.border,
+  },
+  warehouseItemContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   warehouseCode: {
     fontSize: theme.fontSize.md,
     fontWeight: '600',
     color: theme.colors.text,
+  },
+  warehouseCodeDisabled: {
+    color: theme.colors.textSecondary,
+    textDecorationLine: 'line-through',
+  },
+  stockText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    fontWeight: '500',
+  },
+  stockTextDisabled: {
+    color: theme.colors.error,
   },
 });

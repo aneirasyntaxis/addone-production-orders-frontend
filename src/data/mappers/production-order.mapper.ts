@@ -26,6 +26,8 @@ export class ProductionOrderMapper {
       itemType: dto.itemType,
       productionOrderIssueType: dto.productionOrderIssueType,
       lineText: dto.lineText,
+      manageBatchNumbers: dto.manageBatchNumbers,
+      itemWarehouseInfoCollection: dto.itemWarehouseInfoCollection,
     };
   }
 
@@ -72,6 +74,7 @@ export class ProductionOrderMapper {
     return {
       DueDate: order.dueDate,
       ItemNo: order.itemNo,
+      Warehouse: order.warehouse,
       PlannedQuantity: order.plannedQuantity,
       PostingDate: order.postingDate,
       JournalRemarks: order.journalRemarks,

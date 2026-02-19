@@ -7,6 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -34,8 +35,11 @@ interface ConsumerLine {
   itemName: string;
   quantity: string;
   warehouseCode: string;
+  batchNumber: string;
+  requiresBatch: boolean;
   baseEntry?: number;
   baseLine?: number;
+  availableWarehouses: Array<{ code: string; name: string; inStock: number }>;
 }
 
 export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => {
@@ -60,7 +64,9 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
       
       // Set dates
       if (productionOrder.dueDate) {
-        setDocDueDate(new Date(productionOrder.dueDate));
+        // Parse date string (YYYY-MM-DD) to avoid timezone issues
+        const [year, month, day] = productionOrder.dueDate.split('-').map(Number);
+        setDocDueDate(new Date(year, month - 1, day)); // month is 0-indexed
       }
       
       // Set memo with production order number
@@ -74,19 +80,31 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
           const issuedQty = line.issuedQuantity || 0;
           const remainingQty = plannedQty - issuedQty;
           
+          // Extract warehouses from itemWarehouseInfoCollection
+          const availableWarehouses = (line.itemWarehouseInfoCollection || []).map(w => ({
+            code: w.warehouseCode || '',
+            name: w.warehouseCode || '',
+            inStock: w.inStock ?? 0,
+          }));
+          
           return {
             id: Date.now().toString() + index,
             itemCode: (line.itemNo ?? '') as string,
             itemName: (line.itemName ?? '') as string,
             quantity: remainingQty > 0 ? remainingQty.toString() : '',
             warehouseCode: line.warehouse || '',
+            batchNumber: '',
+            requiresBatch: line.manageBatchNumbers || false, // Use batch info from production order
             baseEntry: productionOrder.absoluteEntry || 0,
             baseLine: line.lineNumber,
+            availableWarehouses,
             remainingQty, // Keep for filtering
           };
         })
         .filter((line) => line.remainingQty > 0) // Solo incluir líneas con cantidad pendiente
         .map(({ remainingQty, ...line }) => line); // Remover remainingQty temporal
+      
+      // Use batch requirements information from production order lines
       setLines(orderLines);
     }
   }, [productionOrder, productionOrderId]);
@@ -106,6 +124,9 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
       itemName: '',
       quantity: '',
       warehouseCode: '',
+      batchNumber: '',
+      requiresBatch: false,
+      availableWarehouses: [],
     };
     setLines([...lines, newLine]);
     // Clear "no materials" error when adding a line
@@ -115,10 +136,25 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
   };
 
   const updateLineItem = (id: string, item: Item) => {
+    // Extract warehouses from itemWarehouseInfoCollection
+    const availableWarehouses = (item.itemWarehouseInfoCollection || []).map(w => ({
+      code: w.warehouseCode || '',
+      name: w.warehouseCode || '',
+      inStock: w.inStock ?? 0,
+    }));
+    
     setLines(
       lines.map((line) =>
         line.id === id
-          ? { ...line, itemCode: item.itemCode, itemName: item.itemName || '' }
+          ? { 
+              ...line, 
+              itemCode: item.itemCode, 
+              itemName: item.itemName || '',
+              batchNumber: '',
+              requiresBatch: item.manageBatchNumbers || false,
+              warehouseCode: '',
+              availableWarehouses,
+            }
           : line
       )
     );
@@ -131,7 +167,17 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
   const clearLineItem = (id: string) => {
     setLines(
       lines.map((line) =>
-        line.id === id ? { ...line, itemCode: '', itemName: '' } : line
+        line.id === id 
+          ? { 
+              ...line, 
+              itemCode: '', 
+              itemName: '',
+              batchNumber: '',
+              requiresBatch: false,
+              warehouseCode: '',
+              availableWarehouses: [],
+            } 
+          : line
       )
     );
   };
@@ -150,6 +196,18 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
     setLines(
       lines.map((line) => (line.id === id ? { ...line, warehouseCode: '' } : line))
     );
+  };
+
+  const updateLineBatchNumber = (id: string, value: string) => {
+    // Limit to 40 characters
+    const limitedValue = value.slice(0, 40);
+    setLines(
+      lines.map((line) => (line.id === id ? { ...line, batchNumber: limitedValue } : line))
+    );
+    // Clear batch error when value is entered
+    if (errors[`line-${id}-batchNumber`] && limitedValue) {
+      setErrors({ ...errors, [`line-${id}-batchNumber`]: '' });
+    }
   };
 
   const removeLine = (id: string) => {
@@ -213,6 +271,9 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
       if (line.quantity && parseFloat(line.quantity) < 0) {
         newErrors[`line-${line.id}-quantity`] = 'La cantidad no puede ser negativa';
       }
+      if (line.requiresBatch && !line.batchNumber) {
+        newErrors[`line-${line.id}-batchNumber`] = 'El lote es obligatorio para este producto';
+      }
     });
 
     setErrors(newErrors);
@@ -239,6 +300,10 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
         baseEntry: line.baseEntry ?? null,
         baseLine: line.baseLine,
         baseType: 202, // Production Order type
+        batchNumbers: line.requiresBatch ? [{
+          batchNumber: line.batchNumber,
+          quantity: parseFloat(line.quantity),
+        }] : undefined,
       }));
 
     const formatDateForApi = (date: Date): string => {
@@ -376,6 +441,7 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
                 onClear={() => clearLineWarehouse(line.id)}
                 placeholder="Buscar almacén..."
                 error={errors[`line-${line.id}-warehouse`]}
+                warehouses={line.availableWarehouses}
               />
 
               <View style={styles.inputGroup}>
@@ -395,6 +461,27 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
                   <Text style={styles.errorText}>{errors[`line-${line.id}-quantity`]}</Text>
                 )}
               </View>
+
+              {line.requiresBatch && (
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Lote *</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      errors[`line-${line.id}-batchNumber`] && styles.inputError,
+                    ]}
+                    value={line.batchNumber}
+                    onChangeText={(value) => updateLineBatchNumber(line.id, value)}
+                    placeholder="Ej: LOTE-2024-001"
+                    placeholderTextColor={theme.colors.textSecondary}
+                    maxLength={40}
+                  />
+                  {errors[`line-${line.id}-batchNumber`] && (
+                    <Text style={styles.errorText}>{errors[`line-${line.id}-batchNumber`]}</Text>
+                  )}
+                  <Text style={styles.charCounter}>{line.batchNumber.length}/40 caracteres</Text>
+                </View>
+              )}
             </View>
           ))}
         </Card>
@@ -543,5 +630,21 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: theme.spacing.md,
+  },
+  loadingContainer: {
+    paddingVertical: theme.spacing.md,
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.primary,
+    fontStyle: 'italic',
+    marginTop: theme.spacing.xs,
+  },
+  charCounter: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
+    textAlign: 'right',
   },
 });

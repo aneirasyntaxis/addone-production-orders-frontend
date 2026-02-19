@@ -32,6 +32,8 @@ export class AuthMapper {
     return {
       user,
       sapToken,
+      token: dto.token,
+      tokenExpiresAt: dto.tokenExpiresAt,
     };
   }
 }

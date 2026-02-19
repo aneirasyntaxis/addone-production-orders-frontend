@@ -1,4 +1,7 @@
 // Domain - Production Order Entity
+import { BatchNumbers } from './batch-numbers.entity';
+import { ItemWarehouseInfo } from './item.entity';
+
 export interface ProductionOrderLine {
   itemNo: string | null;
   itemName?: string;
@@ -11,6 +14,8 @@ export interface ProductionOrderLine {
   itemType?: string;
   warehouse?: string;
   lineText?: string;
+  manageBatchNumbers?: boolean;
+  itemWarehouseInfoCollection?: ItemWarehouseInfo[];
 }
 
 export interface ProductionOrder {
@@ -41,14 +46,17 @@ export interface CreateProductionOrderLine {
   itemNo: string;
   baseQuantity?: number;
   plannedQuantity?: number;
+  warehouseCode?: string;
   productionOrderIssueType?: string;
   itemType?: string;
   lineText?: string;
+  batchNumbers?: BatchNumbers[];
 }
 
 export interface CreateProductionOrder {
   dueDate: string;
   itemNo: string;
+  warehouse: string;
   plannedQuantity: number;
   postingDate?: string;
   journalRemarks?: string;

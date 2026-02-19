@@ -80,7 +80,9 @@ export const CreateProductionReceiptScreen: React.FC<Props> = ({ navigation, rou
       
       // Set dates
       if (productionOrder.dueDate) {
-        setDocDueDate(new Date(productionOrder.dueDate));
+        // Parse date string (YYYY-MM-DD) to avoid timezone issues
+        const [year, month, day] = productionOrder.dueDate.split('-').map(Number);
+        setDocDueDate(new Date(year, month - 1, day)); // month is 0-indexed
       }
       
       // Set memo with production order number

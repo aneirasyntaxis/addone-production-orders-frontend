@@ -1,4 +1,7 @@
 // Data - Production Order DTOs
+import { BatchNumbersDto } from './batch-numbers.dto';
+import { ItemWarehouseInfoDto } from './item.dto';
+
 export interface ProductionOrderLineDto {
   itemNo: string | null;
   itemName?: string;
@@ -11,6 +14,8 @@ export interface ProductionOrderLineDto {
   itemType?: string;
   productionOrderIssueType?: string | null;
   lineText?: string;
+  manageBatchNumbers?: boolean;
+  itemWarehouseInfoCollection?: ItemWarehouseInfoDto[];
 }
 
 export interface ProductionOrderDto {
@@ -39,14 +44,17 @@ export interface CreateProductionOrderLineDto {
   ItemNo: string;
   BaseQuantity?: number;
   PlannedQuantity?: number;
+  WarehouseCode?: string;
   ProductionOrderIssueType?: string;
   ItemType?: string;
   LineText?: string;
+  BatchNumbers?: BatchNumbersDto[];
 }
 
 export interface CreateProductionOrderDto {
   DueDate: string;
   ItemNo: string;
+  Warehouse: string;
   PlannedQuantity: number;
   PostingDate?: string;
   JournalRemarks?: string;

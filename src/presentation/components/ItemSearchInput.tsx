@@ -13,6 +13,7 @@ import {
 import { theme } from '../theme/theme';
 import { useItemSearch } from '../hooks/useItemSearch';
 import { Item } from '../../domain/entities/item.entity';
+import { SEARCH_MIN_CHARS } from '../../core/config/search.config';
 
 interface ItemSearchInputProps {
   value: string;
@@ -34,20 +35,47 @@ export const ItemSearchInput: React.FC<ItemSearchInputProps> = ({
   const [searchText, setSearchText] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [stockInfo, setStockInfo] = useState<{ [itemCode: string]: string }>({});
 
   const { items, isSearching } = useItemSearch(searchText, 5);
+
+  // Load stock information for each item from itemWarehouseInfoCollection
+  React.useEffect(() => {
+    if (items.length > 0) {
+      const newStockInfo: { [itemCode: string]: string } = {};
+      
+      items.forEach((item) => {
+        if (item.itemWarehouseInfoCollection) {
+          const warehousesWithStock = item.itemWarehouseInfoCollection
+            .filter(wh => (wh.inStock ?? 0) > 0)
+            .map(wh => `${wh.warehouseCode} (${wh.inStock})`)
+            .join(' - ');
+          
+          newStockInfo[item.itemCode] = warehousesWithStock || 'Sin stock';
+        } else {
+          newStockInfo[item.itemCode] = 'Sin stock';
+        }
+      });
+      
+      setStockInfo(newStockInfo);
+    }
+  }, [items]);
 
   const handleTextChange = (text: string) => {
     setSearchText(text);
     setSelectedItem(null);
     onClear();
-    
-    if (text.length >= 3) {
+    // El dropdown se controlará automáticamente basado en si hay resultados
+  };
+
+  // Auto-open dropdown when search results are available
+  React.useEffect(() => {
+    if (searchText.length >= SEARCH_MIN_CHARS && items.length > 0 && !selectedItem) {
       setShowDropdown(true);
-    } else {
+    } else if (searchText.length < SEARCH_MIN_CHARS) {
       setShowDropdown(false);
     }
-  };
+  }, [items, searchText, selectedItem]);
 
   const handleSelectItem = (item: Item) => {
     setSelectedItem(item);
@@ -129,6 +157,11 @@ export const ItemSearchInput: React.FC<ItemSearchInputProps> = ({
                   <Text style={styles.itemName} numberOfLines={1}>
                     {item.itemName || 'Sin descripción'}
                   </Text>
+                  {stockInfo[item.itemCode] && (
+                    <Text style={stockInfo[item.itemCode] === 'Sin stock' ? styles.stockInfoEmpty : styles.stockInfo}>
+                      Stock: {stockInfo[item.itemCode]}
+                    </Text>
+                  )}
                 </TouchableOpacity>
               )}
               style={styles.dropdown}
@@ -226,5 +259,16 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.textSecondary,
+    marginBottom: 2,
+  },
+  stockInfo: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.success,
+    fontWeight: '500',
+  },
+  stockInfoEmpty: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.error,
+    fontWeight: '500',
   },
 });

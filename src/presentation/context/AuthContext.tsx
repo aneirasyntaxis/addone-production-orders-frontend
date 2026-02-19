@@ -5,6 +5,7 @@ import { GetSessionUseCase } from '../../domain/usecases/get-session.usecase';
 import { LogoutUseCase } from '../../domain/usecases/logout.usecase';
 import { authRepository } from '../../data/repositories/auth.repository';
 import { logger } from '../../core/logging/logger';
+import { authEvents } from '../../core/events/auth-events';
 
 interface AuthContextType {
   session: AuthSession | null;
@@ -52,8 +53,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const setSession = (newSession: AuthSession) => {
+  const setSession = async (newSession: AuthSession) => {
     logger.info('Setting new session', { userId: newSession.user.userId });
+    
+    // Save session to repository (AsyncStorage)
+    await authRepository.saveSession(newSession);
+    
+    // Save JWT token if present
+    if (newSession.token) {
+      const apiClient = (await import('../../data/api/api-client')).apiClient;
+      await apiClient.setAuthToken(newSession.token);
+      logger.info('JWT token saved', { expiresAt: newSession.tokenExpiresAt });
+    }
+    
+    // Update state after saving
     setSessionState(newSession);
   };
 
@@ -61,6 +74,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       logger.info('Logging out...');
       await logoutUseCase.execute();
+      
+      // Clear JWT token
+      const apiClient = (await import('../../data/api/api-client')).apiClient;
+      await apiClient.clearAuthToken();
+      
       setSessionState(null);
       logger.info('Logout successful');
     } catch (error) {
@@ -68,6 +86,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       throw error;
     }
   };
+
+  // Check token expiration every minute
+  React.useEffect(() => {
+    if (!session || !session.tokenExpiresAt) return;
+
+    const checkTokenExpiration = () => {
+      const now = new Date().getTime();
+      const expiresAt = new Date(session.tokenExpiresAt!).getTime();
+      
+      if (now >= expiresAt) {
+        logger.warn('JWT token expired, logging out');
+        logout();
+      }
+    };
+
+    // Check immediately
+    checkTokenExpiration();
+
+    // Check every minute
+    const interval = setInterval(checkTokenExpiration, 60000);
+
+    return () => clearInterval(interval);
+  }, [session]);
+
+  // Listen for unauthorized events from API client
+  React.useEffect(() => {
+    const handleUnauthorized = () => {
+      logger.warn('Unauthorized event received - forcing logout');
+      logout();
+    };
+
+    authEvents.on('unauthorized', handleUnauthorized);
+
+    return () => {
+      authEvents.off('unauthorized', handleUnauthorized);
+    };
+  }, []);
 
   const value: AuthContextType = {
     session,

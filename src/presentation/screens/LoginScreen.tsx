@@ -77,7 +77,7 @@ export const LoginScreen: React.FC = () => {
         companyDB,
       },
       {
-        onSuccess: (session) => {
+        onSuccess: async (session) => {
           // Add company name to session
           const selectedCompany = companies?.find((c) => c.code === companyDB);
           const sessionWithCompany = {
@@ -87,7 +87,7 @@ export const LoginScreen: React.FC = () => {
               companyName: selectedCompany?.name,
             },
           };
-          setSession(sessionWithCompany);
+          await setSession(sessionWithCompany);
           Toast.show({
             type: 'success',
             text1: 'Inicio de sesión exitoso',
