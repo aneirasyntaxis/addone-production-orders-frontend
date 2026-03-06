@@ -50,10 +50,10 @@ export interface CreateProductionOrderLine {
   productionOrderIssueType?: string;
   itemType?: string;
   lineText?: string;
-  batchNumbers?: BatchNumbers[];
 }
 
 export interface CreateProductionOrder {
+  productionOrderType?: string;
   dueDate: string;
   itemNo: string;
   warehouse: string;

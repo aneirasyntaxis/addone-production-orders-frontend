@@ -191,6 +191,14 @@ export const ConsumerDetailScreen: React.FC<Props> = ({ route, navigation }) => 
                   <Text style={styles.value}>{line.projectCode}</Text>
                 </View>
               )}
+              {line.batchNumbers && line.batchNumbers.length > 0 && (
+                <View style={styles.infoRow}>
+                  <Text style={styles.label}>Lotes:</Text>
+                  <Text style={styles.value}>
+                    {line.batchNumbers.map(b => `${b.batchNumber} (${b.quantity})`).join(', ')}
+                  </Text>
+                </View>
+              )}
             </View>
           ))}
         </Card>

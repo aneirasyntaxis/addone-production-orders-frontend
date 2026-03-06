@@ -5,3 +5,10 @@ export interface BatchNumbersDto {
   baseLineNumber?: number;
   itemCode?: string;
 }
+
+export interface CreateBatchNumbersDto {
+  BatchNumber?: string;
+  Quantity?: number;
+  BaseLineNumber?: number;
+  ItemCode?: string;
+}

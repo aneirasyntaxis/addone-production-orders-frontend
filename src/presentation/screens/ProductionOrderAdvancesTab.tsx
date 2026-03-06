@@ -46,6 +46,13 @@ export const ProductionOrderAdvancesTab: React.FC<ProductionOrderAdvancesTabProp
     }
   }, [advances, productionOrderId]);
 
+  // Verificar si la orden está cancelada o cerrada
+  const isOrderClosedOrCancelled = React.useMemo(() => {
+    if (!productionOrder) return false;
+    const status = productionOrder.productionOrderStatus?.toLowerCase();
+    return status === 'boposclosed' || status === 'boposcancelled';
+  }, [productionOrder]);
+
   // Verificar si aún hay cantidad disponible para recibir
   const hasAvailableQuantity = React.useMemo(() => {
     if (!productionOrder) return true; // Si no hay orden, mostrar botón por defecto
@@ -157,7 +164,7 @@ export const ProductionOrderAdvancesTab: React.FC<ProductionOrderAdvancesTabProp
           </View>
         }
       />
-      {hasAvailableQuantity && <FAB onPress={handleCreateAdvance} />}
+      {hasAvailableQuantity && !isOrderClosedOrCancelled && <FAB onPress={handleCreateAdvance} />}
     </View>
   );
 };

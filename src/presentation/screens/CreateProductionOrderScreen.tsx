@@ -29,7 +29,6 @@ import { ProductTree } from '../../domain/entities/product-tree.entity';
 import { CreateProductionOrderLine } from '../../domain/entities/production-order.entity';
 import { logger } from '../../core/logging/logger';
 import { productTreeApi } from '../../data/api/product-tree.api';
-import { warehouseApi } from '../../data/api/warehouse.api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateProductionOrder'>;
 
@@ -45,8 +44,6 @@ interface ProductionOrderLine {
   productionOrderIssueType: string;
   itemType?: string;
   lineText?: string;
-  batchNumber: string;
-  requiresBatch: boolean;
   defaultWarehouse: string;
   availableWarehouses: Array<{ code: string; name: string; inStock: number }>;
 }
@@ -73,35 +70,10 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
   const [lines, setLines] = useState<ProductionOrderLine[]>([]);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
   const [isLoadingProductTree, setIsLoadingProductTree] = useState(false);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [isLoadingWarehouses, setIsLoadingWarehouses] = useState(true);
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const { mutate: createOrder, isPending } = useCreateProductionOrder();
-
-  // Cargar warehouses al montar el componente
-  useEffect(() => {
-    const loadWarehouses = async () => {
-      try {
-        logger.debug('CreateProductionOrderScreen: Loading warehouses');
-        const warehousesData = await warehouseApi.getAll();
-        setWarehouses(warehousesData.map(dto => ({ warehouseCode: dto.warehouseCode })));
-        logger.debug('CreateProductionOrderScreen: Warehouses loaded', { count: warehousesData.length });
-      } catch (error) {
-        logger.error('CreateProductionOrderScreen: Error loading warehouses', { error });
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: 'No se pudo cargar la información de almacenes',
-        });
-      } finally {
-        setIsLoadingWarehouses(false);
-      }
-    };
-
-    loadWarehouses();
-  }, []);
 
   const handleProductTreeSelect = async (productTree: ProductTree) => {
     logger.debug('CreateProductionOrderScreen: Product tree selected from search', {
@@ -112,7 +84,7 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
     setIsLoadingProductTree(true);
 
     try {
-      // Llamar al servicio /{treeCode} para obtener datos completos con manageBatchNumbers e itemWarehouseInfoCollection
+      // Llamar al servicio /{treeCode} para obtener datos completos con itemWarehouseInfoCollection
       logger.debug('CreateProductionOrderScreen: Loading full product tree details', {
         treeCode: productTree.treeCode,
       });
@@ -145,7 +117,7 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
         setErrors({ ...errors, headerItem: '' });
       }
 
-      // Load product tree lines with full information (manageBatchNumbers and warehouse info)
+      // Load product tree lines with full information (warehouse info)
       const newLines: ProductionOrderLine[] = fullProductTree.productTreeLines.map((line, index) => {
         const defaultWarehouse = line.warehouse || '';
         
@@ -189,8 +161,6 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
           productionOrderIssueType: line.issueMethod || 'im_Manual',
           itemType: line.itemType,
           lineText: line.lineText || '',
-          batchNumber: '',
-          requiresBatch: line.itemType === 'pit_Item' ? (line.manageBatchNumbers || false) : false,
           defaultWarehouse,
           availableWarehouses,
         };
@@ -300,8 +270,6 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
       plannedQuantity: '',
       warehouseCode: '',
       productionOrderIssueType: 'im_Manual',
-      batchNumber: '',
-      requiresBatch: false,
       defaultWarehouse: '',
       availableWarehouses: [],
     };
@@ -334,8 +302,6 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
               ...line, 
               itemNo: item.itemCode, 
               itemName: item.itemName || '',
-              batchNumber: '',
-              requiresBatch: item.manageBatchNumbers || false,
               warehouseCode: '', // Reset warehouse selection
               defaultWarehouse: '',
               availableWarehouses,
@@ -357,8 +323,6 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
               ...line, 
               itemNo: '', 
               itemName: '',
-              batchNumber: '',
-              requiresBatch: false,
               warehouseCode: '',
               defaultWarehouse: '',
               availableWarehouses: [],
@@ -375,18 +339,6 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
     // Clear warehouse error when selected
     if (errors[`line-${id}-warehouse`]) {
       setErrors({ ...errors, [`line-${id}-warehouse`]: '' });
-    }
-  };
-
-  const updateLineBatchNumber = (id: string, value: string) => {
-    // Limit to 40 characters
-    const limitedValue = value.slice(0, 40);
-    setLines(
-      lines.map((line) => (line.id === id ? { ...line, batchNumber: limitedValue } : line))
-    );
-    // Clear batch error when value is entered
-    if (errors[`line-${id}-batchNumber`] && limitedValue) {
-      setErrors({ ...errors, [`line-${id}-batchNumber`]: '' });
     }
   };
 
@@ -453,9 +405,6 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
         if (!line.plannedQuantity || parseFloat(line.plannedQuantity) <= 0) {
           newErrors[`line-${line.id}-quantity`] = 'Cantidad inválida';
         }
-        if (line.requiresBatch && !line.batchNumber) {
-          newErrors[`line-${line.id}-batchNumber`] = 'El lote es obligatorio para este producto';
-        }
       }
     });
 
@@ -483,10 +432,6 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
       productionOrderIssueType: line.itemType === 'pit_Text' ? undefined : 'im_Manual',
       itemType: line.itemType,
       lineText: line.itemType === 'pit_Text' ? line.lineText : undefined,
-      batchNumbers: (line.itemType !== 'pit_Text' && line.requiresBatch) ? [{
-        batchNumber: line.batchNumber,
-        quantity: parseFloat(line.plannedQuantity),
-      }] : undefined,
     }));
 
     const formatDateForApi = (date: Date): string => {
@@ -497,6 +442,7 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
     };
 
     const order = {
+      productionOrderType: mode === 'standard' ? 'bopotStandard' : 'bopotSpecial',
       itemNo: headerItemNo,
       warehouse: headerWarehouseCode,
       plannedQuantity: parseFloat(plannedQuantity),
@@ -538,16 +484,6 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Loading Warehouses Message */}
-        {isLoadingWarehouses && (
-          <Card style={styles.card}>
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={theme.colors.primary} />
-              <Text style={[styles.loadingText, styles.preparingText]}>Preparando información...</Text>
-            </View>
-          </Card>
-        )}
-
         {/* General Info */}
         <Card style={styles.card}>
           <Text style={styles.sectionTitle}>Información General</Text>
@@ -593,17 +529,14 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
 
           {mode === 'standard' ? (
             <>
-              <View style={isLoadingWarehouses && styles.disabledSection}>
-                <ProductTreeSearchInput
-                  value={headerItemName}
-                  onSelectProductTree={handleProductTreeSelect}
-                  onClear={handleHeaderItemClear}
-                  label="Producto"
-                  placeholder="Buscar producto..."
-                  error={errors.headerItem}
-                />
-                {isLoadingWarehouses && <View style={styles.disabledOverlay} />}
-              </View>
+              <ProductTreeSearchInput
+                value={headerItemName}
+                onSelectProductTree={handleProductTreeSelect}
+                onClear={handleHeaderItemClear}
+                label="Producto"
+                placeholder="Buscar producto..."
+                error={errors.headerItem}
+              />
               {isLoadingProductTree && (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="small" color={theme.colors.primary} />
@@ -613,17 +546,14 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
             </>
           ) : (
             <>
-              <View style={isLoadingWarehouses && styles.disabledSection}>
-                <ItemSearchInput
-                  value={headerItemName}
-                  onSelectItem={handleHeaderItemSelect}
-                  onClear={handleHeaderItemClear}
-                  label="Producto"
-                  placeholder="Buscar producto..."
-                  error={errors.headerItem}
-                />
-                {isLoadingWarehouses && <View style={styles.disabledOverlay} />}
-              </View>
+              <ItemSearchInput
+                value={headerItemName}
+                onSelectItem={handleHeaderItemSelect}
+                onClear={handleHeaderItemClear}
+                label="Producto"
+                placeholder="Buscar producto..."
+                error={errors.headerItem}
+              />
             </>
           )}
 
@@ -801,26 +731,6 @@ export const CreateProductionOrderScreen: React.FC<Props> = ({ navigation }) => 
                 </View>
               )}
 
-              {line.itemType !== 'pit_Text' && line.requiresBatch && (
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Lote *</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      errors[`line-${line.id}-batchNumber`] && styles.inputError,
-                    ]}
-                    value={line.batchNumber}
-                    onChangeText={(value) => updateLineBatchNumber(line.id, value)}
-                    placeholder="Ej: LOTE-2024-001"
-                    placeholderTextColor={theme.colors.textSecondary}
-                    maxLength={40}
-                  />
-                  {errors[`line-${line.id}-batchNumber`] && (
-                    <Text style={styles.errorText}>{errors[`line-${line.id}-batchNumber`]}</Text>
-                  )}
-                  <Text style={styles.characterCount}>{line.batchNumber.length}/40 caracteres</Text>
-                </View>
-              )}
             </View>
           ))}
 
@@ -986,24 +896,6 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.sm,
     color: theme.colors.primary,
     fontStyle: 'italic',
-  },
-  preparingText: {
-    fontSize: theme.fontSize.md,
-    fontWeight: '600',
-    marginTop: theme.spacing.xs,
-  },
-  disabledSection: {
-    opacity: 0.5,
-    position: 'relative',
-  },
-  disabledOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'transparent',
-    zIndex: 999,
   },
   inputGroup: {
     marginBottom: theme.spacing.sm,

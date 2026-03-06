@@ -17,10 +17,14 @@ export class AdvancedProductMapper {
     return {
       quantity: dto.quantity,
       itemCode: dto.itemCode ?? undefined,
+      itemDescription: dto.itemDescription ?? undefined,
       lineNum: dto.lineNum,
       baseEntry: dto.baseEntry,
       baseLine: dto.baseLine,
       warehouseCode: dto.warehouseCode ?? undefined,
+      projectCode: dto.projectCode ?? undefined,
+      costingCode: dto.costingCode ?? undefined,
+      price: dto.price,
       batchNumbers: dto.batchNumbers,
     };
   }
@@ -47,6 +51,7 @@ export class AdvancedProductMapper {
       ItemCode: line.itemCode,
       ProjectCode: line.projectCode,
       CostingCode: line.costingCode,
+      Price: line.price,
       BaseEntry: line.baseEntry,
       BaseLine: line.baseLine,
       BaseType: line.baseType,

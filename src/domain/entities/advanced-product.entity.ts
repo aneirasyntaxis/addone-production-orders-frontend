@@ -4,12 +4,15 @@ import { BatchNumbers } from './batch-numbers.entity';
 export interface AdvancedProductLine {
   quantity: number;
   itemCode?: string;
+  itemDescription?: string;
   lineNum?: number;
   lineNumber?: number;
   baseEntry?: number;
   baseLine?: number;
-  itemDescription?: string;
   warehouseCode?: string;
+  projectCode?: string;
+  costingCode?: string;
+  price?: number;
   batchNumbers?: BatchNumbers[];
 }
 
@@ -32,6 +35,7 @@ export interface CreateAdvancedProductLine {
   itemCode?: string;
   projectCode?: string;
   costingCode?: string;
+  price?: number;
   baseEntry: number | null;
   baseLine?: number;
   baseType?: number | null;

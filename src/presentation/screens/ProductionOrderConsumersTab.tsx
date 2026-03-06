@@ -53,6 +53,13 @@ export const ProductionOrderConsumersTab: React.FC<ProductionOrderConsumersTabPr
     navigation.navigate('CreateConsumer', { productionOrderId });
   };
 
+  // Verificar si la orden está cancelada o cerrada
+  const isOrderClosedOrCancelled = React.useMemo(() => {
+    if (!productionOrder) return false;
+    const status = productionOrder.productionOrderStatus?.toLowerCase();
+    return status === 'boposclosed' || status === 'boposcancelled';
+  }, [productionOrder]);
+
   // Verificar si hay líneas pendientes de consumir (excluyendo pit_Text)
   const hasRemainingLines = React.useMemo(() => {
     if (!productionOrder) return true; // Si no hay orden, mostrar botón por defecto
@@ -149,7 +156,7 @@ export const ProductionOrderConsumersTab: React.FC<ProductionOrderConsumersTabPr
           </View>
         }
       />
-      {hasRemainingLines && <FAB onPress={handleCreateConsumer} />}
+      {hasRemainingLines && !isOrderClosedOrCancelled && <FAB onPress={handleCreateConsumer} />}
     </View>
   );
 };

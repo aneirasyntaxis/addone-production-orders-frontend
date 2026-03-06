@@ -48,7 +48,6 @@ export interface CreateProductionOrderLineDto {
   ProductionOrderIssueType?: string;
   ItemType?: string;
   LineText?: string;
-  BatchNumbers?: BatchNumbersDto[];
 }
 
 export interface CreateProductionOrderDto {

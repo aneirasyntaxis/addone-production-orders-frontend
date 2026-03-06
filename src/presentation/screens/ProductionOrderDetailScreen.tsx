@@ -56,6 +56,8 @@ export const ProductionOrderDetailScreen: React.FC<Props> = ({ route, navigation
         return styles.statusPlanned;
       case 'boposclosed':
         return styles.statusClosed;
+      case 'boposcancelled':
+        return styles.statusCancelled;
       default:
         return styles.statusDefault;
     }
@@ -69,6 +71,8 @@ export const ProductionOrderDetailScreen: React.FC<Props> = ({ route, navigation
         return 'Planificada';
       case 'boposclosed':
         return 'Cerrada';
+      case 'boposcancelled':
+        return 'Cancelada';
       default:
         return status || 'N/A';
     }
@@ -354,7 +358,7 @@ export const ProductionOrderDetailScreen: React.FC<Props> = ({ route, navigation
             <View style={[styles.statusBadge, getStatusStyle(order.productionOrderStatus)]}>
               <Text style={styles.statusText}>{getStatusText(order.productionOrderStatus)}</Text>
             </View>
-            {!isEditingWaste && order.productionOrderStatus?.toLowerCase() !== 'boposclosed' && (
+            {!isEditingWaste && order.productionOrderStatus?.toLowerCase() !== 'boposclosed' && order.productionOrderStatus?.toLowerCase() !== 'boposcancelled' && (
               <TouchableOpacity onPress={handleEditWaste} style={styles.editWasteButton}>
                 <Text style={styles.editWasteButtonText}>Agregar Merma</Text>
               </TouchableOpacity>
@@ -416,7 +420,7 @@ export const ProductionOrderDetailScreen: React.FC<Props> = ({ route, navigation
               ) : (
                 <View style={styles.quantityDisplayContainer}>
                   <Text style={styles.value}>{formatThousands(order.plannedQuantity)}</Text>
-                  {order.productionOrderStatus?.toLowerCase() !== 'boposclosed' && (
+                  {order.productionOrderStatus?.toLowerCase() !== 'boposclosed' && order.productionOrderStatus?.toLowerCase() !== 'boposcancelled' && (
                     <TouchableOpacity onPress={handleEditQuantity} style={styles.editButton}>
                       <Text style={styles.editIcon}>✒️</Text>
                     </TouchableOpacity>
@@ -628,6 +632,9 @@ const styles = StyleSheet.create({
   },
   statusClosed: {
     backgroundColor: theme.colors.textSecondary,
+  },
+  statusCancelled: {
+    backgroundColor: theme.colors.error,
   },
   statusDefault: {
     backgroundColor: theme.colors.primary,

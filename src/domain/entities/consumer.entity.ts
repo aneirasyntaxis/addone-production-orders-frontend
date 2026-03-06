@@ -13,6 +13,7 @@ export interface ConsumerLine {
   accountCode?: string;
   costingCode?: string;
   projectCode?: string;
+  price?: number;
   batchNumbers?: BatchNumbers[];
   manageBatchNumbers?: boolean;
   itemWarehouseInfoCollection?: ItemWarehouseInfo[];
@@ -38,6 +39,7 @@ export interface CreateConsumerLine {
   warehouseCode?: string;
   projectCode?: string;
   costingCode?: string;
+  price?: number;
   baseEntry: number | null;
   baseLine?: number;
   baseType?: number;

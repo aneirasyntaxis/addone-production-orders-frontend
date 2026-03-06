@@ -175,6 +175,8 @@ export const HomeScreen: React.FC = () => {
         return styles.statusPlanned;
       case 'boposclosed':
         return styles.statusClosed;
+      case 'boposcancelled':
+        return styles.statusCancelled;
       default:
         return styles.statusDefault;
     }
@@ -188,6 +190,8 @@ export const HomeScreen: React.FC = () => {
         return 'Planificada';
       case 'boposclosed':
         return 'Cerrada';
+      case 'boposcancelled':
+        return 'Cancelada';
       default:
         return status || 'N/A';
     }
@@ -518,6 +522,9 @@ const styles = StyleSheet.create({
   },
   statusClosed: {
     backgroundColor: theme.colors.textSecondary,
+  },
+  statusCancelled: {
+    backgroundColor: theme.colors.error,
   },
   statusDefault: {
     backgroundColor: theme.colors.primary,

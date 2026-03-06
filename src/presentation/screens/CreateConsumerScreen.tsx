@@ -8,7 +8,9 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Toast from 'react-native-toast-message';
@@ -18,12 +20,12 @@ import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { DatePickerInput } from '../components/DatePickerInput';
 import { ItemSearchInput } from '../components/ItemSearchInput';
-import { WarehouseSearchInput } from '../components/WarehouseSearchInput';
 import { useCreateConsumer } from '../hooks/useCreateConsumer';
 import { useProductionOrderById } from '../hooks/useProductionOrderById';
 import { CreateConsumerLine, Consumer } from '../../domain/entities/consumer.entity';
 import { Item } from '../../domain/entities/item.entity';
 import { Warehouse } from '../../domain/entities/warehouse.entity';
+import { Batch } from '../../domain/entities/batch.entity';
 import { logger } from '../../core/logging/logger';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -33,13 +35,17 @@ interface ConsumerLine {
   id: string;
   itemCode: string;
   itemName: string;
+  itemType?: string; // Item type from Production Order (pit_Resource, pit_Item, etc.)
   quantity: string;
   warehouseCode: string;
   batchNumber: string;
   requiresBatch: boolean;
   baseEntry?: number;
   baseLine?: number;
+  defaultWarehouse?: string; // Warehouse from Production Order
   availableWarehouses: Array<{ code: string; name: string; inStock: number }>;
+  availableBatches: Batch[];
+  loadingBatches: boolean;
 }
 
 export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => {
@@ -80,24 +86,30 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
           const issuedQty = line.issuedQuantity || 0;
           const remainingQty = plannedQty - issuedQty;
           
-          // Extract warehouses from itemWarehouseInfoCollection
-          const availableWarehouses = (line.itemWarehouseInfoCollection || []).map(w => ({
-            code: w.warehouseCode || '',
-            name: w.warehouseCode || '',
-            inStock: w.inStock ?? 0,
-          }));
+          // Filter warehouses: show only those with stock > 0
+          const availableWarehouses = (line.itemWarehouseInfoCollection || [])
+            .filter(w => (w.inStock ?? 0) > 0)
+            .map(w => ({
+              code: w.warehouseCode || '',
+              name: w.warehouseCode || '',
+              inStock: w.inStock ?? 0,
+            }));
           
           return {
             id: Date.now().toString() + index,
             itemCode: (line.itemNo ?? '') as string,
             itemName: (line.itemName ?? '') as string,
+            itemType: line.itemType, // Item type (pit_Resource, pit_Item, etc.)
             quantity: remainingQty > 0 ? remainingQty.toString() : '',
             warehouseCode: line.warehouse || '',
             batchNumber: '',
             requiresBatch: line.manageBatchNumbers || false, // Use batch info from production order
             baseEntry: productionOrder.absoluteEntry || 0,
             baseLine: line.lineNumber,
+            defaultWarehouse: line.warehouse || '', // Save default warehouse from OF
             availableWarehouses,
+            availableBatches: [],
+            loadingBatches: false,
             remainingQty, // Keep for filtering
           };
         })
@@ -122,11 +134,15 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
       id: Date.now().toString(),
       itemCode: '',
       itemName: '',
+      itemType: undefined,
       quantity: '',
       warehouseCode: '',
       batchNumber: '',
       requiresBatch: false,
+      defaultWarehouse: undefined,
       availableWarehouses: [],
+      availableBatches: [],
+      loadingBatches: false,
     };
     setLines([...lines, newLine]);
     // Clear "no materials" error when adding a line
@@ -136,12 +152,14 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
   };
 
   const updateLineItem = (id: string, item: Item) => {
-    // Extract warehouses from itemWarehouseInfoCollection
-    const availableWarehouses = (item.itemWarehouseInfoCollection || []).map(w => ({
-      code: w.warehouseCode || '',
-      name: w.warehouseCode || '',
-      inStock: w.inStock ?? 0,
-    }));
+    // Filter warehouses: show only those with stock > 0
+    const availableWarehouses = (item.itemWarehouseInfoCollection || [])
+      .filter(w => (w.inStock ?? 0) > 0)
+      .map(w => ({
+        code: w.warehouseCode || '',
+        name: w.warehouseCode || '',
+        inStock: w.inStock ?? 0,
+      }));
     
     setLines(
       lines.map((line) =>
@@ -153,7 +171,10 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
               batchNumber: '',
               requiresBatch: item.manageBatchNumbers || false,
               warehouseCode: '',
+              defaultWarehouse: undefined,
               availableWarehouses,
+              availableBatches: [],
+              loadingBatches: false,
             }
           : line
       )
@@ -175,40 +196,78 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
               batchNumber: '',
               requiresBatch: false,
               warehouseCode: '',
+              defaultWarehouse: undefined,
               availableWarehouses: [],
+              availableBatches: [],
+              loadingBatches: false,
             } 
           : line
       )
     );
   };
 
-  const updateLineWarehouse = (id: string, warehouse: Warehouse) => {
+  const updateLineWarehouse = (id: string, warehouseCode: string) => {
     setLines(
-      lines.map((line) => (line.id === id ? { ...line, warehouseCode: warehouse.warehouseCode } : line))
+      lines.map((line) => {
+        if (line.id === id) {
+          // Reset batch when warehouse changes
+          return {
+            ...line,
+            warehouseCode,
+            batchNumber: '',
+            availableBatches: [],
+            loadingBatches: false,
+          };
+        }
+        return line;
+      })
     );
-    // Clear warehouse error when selected
-    if (errors[`line-${id}-warehouse`]) {
-      setErrors({ ...errors, [`line-${id}-warehouse`]: '' });
-    }
+    // Clear warehouse and batch errors when warehouse selected
+    const newErrors = { ...errors };
+    delete newErrors[`line-${id}-warehouse`];
+    delete newErrors[`line-${id}-batchNumber`];
+    setErrors(newErrors);
   };
 
-  const clearLineWarehouse = (id: string) => {
+  const updateLineBatchNumber = (id: string, batchNumber: string) => {
     setLines(
-      lines.map((line) => (line.id === id ? { ...line, warehouseCode: '' } : line))
+      lines.map((line) => (line.id === id ? { ...line, batchNumber } : line))
     );
-  };
-
-  const updateLineBatchNumber = (id: string, value: string) => {
-    // Limit to 40 characters
-    const limitedValue = value.slice(0, 40);
-    setLines(
-      lines.map((line) => (line.id === id ? { ...line, batchNumber: limitedValue } : line))
-    );
-    // Clear batch error when value is entered
-    if (errors[`line-${id}-batchNumber`] && limitedValue) {
+    // Clear batch error when selected
+    if (errors[`line-${id}-batchNumber`] && batchNumber) {
       setErrors({ ...errors, [`line-${id}-batchNumber`]: '' });
     }
   };
+
+  // Load batches dynamically when item and warehouse are selected
+  React.useEffect(() => {
+    lines.forEach(async (line) => {
+      if (line.requiresBatch && line.itemCode && line.warehouseCode && line.availableBatches.length === 0 && !line.loadingBatches) {
+        // Mark as loading
+        setLines(prevLines =>
+          prevLines.map(l => l.id === line.id ? { ...l, loadingBatches: true } : l)
+        );
+
+        try {
+          const { batchRepository } = await import('../../data/repositories/batch.repository.impl');
+          const batches = await batchRepository.getBatchesByItemAndWarehouse(line.itemCode, line.warehouseCode);
+          
+          setLines(prevLines =>
+            prevLines.map(l => 
+              l.id === line.id 
+                ? { ...l, availableBatches: batches, loadingBatches: false }
+                : l
+            )
+          );
+        } catch (error) {
+          logger.error('Error loading batches', { error, lineId: line.id });
+          setLines(prevLines =>
+            prevLines.map(l => l.id === line.id ? { ...l, loadingBatches: false } : l)
+          );
+        }
+      }
+    });
+  }, [lines.map(l => `${l.id}-${l.itemCode}-${l.warehouseCode}-${l.requiresBatch}`).join('|')]);
 
   const removeLine = (id: string) => {
     // No permitir eliminar si solo queda una línea
@@ -265,14 +324,31 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
       if (!line.itemCode) {
         newErrors[`line-${line.id}-item`] = 'Seleccione un producto';
       }
-      if (!line.warehouseCode) {
-        newErrors[`line-${line.id}-warehouse`] = 'Seleccione un almacén';
+      // Skip warehouse validation for pit_Resource items (non-inventoriable)
+      if (line.itemType !== 'pit_Resource') {
+        if (!line.warehouseCode) {
+          newErrors[`line-${line.id}-warehouse`] = 'Seleccione un almacén';
+        }
+        // Validar que el almacén tenga stock > 0 (only for inventoriable items)
+        if (line.warehouseCode) {
+          const selectedWarehouse = line.availableWarehouses.find(w => w.code === line.warehouseCode);
+          if (selectedWarehouse && selectedWarehouse.inStock === 0) {
+            newErrors[`line-${line.id}-warehouse`] = 'El almacén seleccionado no tiene stock disponible';
+          }
+        }
       }
       if (line.quantity && parseFloat(line.quantity) < 0) {
         newErrors[`line-${line.id}-quantity`] = 'La cantidad no puede ser negativa';
       }
       if (line.requiresBatch && !line.batchNumber) {
-        newErrors[`line-${line.id}-batchNumber`] = 'El lote es obligatorio para este producto';
+        newErrors[`line-${line.id}-batchNumber`] = 'Debe seleccionar un lote';
+      }
+      // Validar que el lote tenga cantidad suficiente
+      if (line.requiresBatch && line.batchNumber && line.quantity) {
+        const selectedBatch = line.availableBatches.find(b => b.batchNum === line.batchNumber);
+        if (selectedBatch && parseFloat(line.quantity) > selectedBatch.quantity) {
+          newErrors[`line-${line.id}-batchNumber`] = `El lote no tiene cantidad suficiente (Disponible: ${selectedBatch.quantity})`;
+        }
       }
     });
 
@@ -280,8 +356,27 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
     return Object.keys(newErrors).length === 0;
   };
 
+  // Check if any line has insufficient batch quantity (blocks submission)
+  const hasInsufficientBatchQuantity = React.useMemo(() => {
+    return lines.some(line => {
+      if (!line.requiresBatch || !line.batchNumber || !line.quantity) return false;
+      const selectedBatch = line.availableBatches.find(b => b.batchNum === line.batchNumber);
+      return selectedBatch && parseFloat(line.quantity) > selectedBatch.quantity;
+    });
+  }, [lines]);
+
   const handleSubmit = () => {
     logger.info('CreateConsumerScreen: Submit pressed');
+
+    // Check for insufficient batch quantities
+    if (hasInsufficientBatchQuantity) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error de Lote',
+        text2: 'Uno o más lotes no tienen cantidad suficiente',
+      });
+      return;
+    }
 
     if (!validate()) {
       Toast.show({
@@ -434,15 +529,56 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
                 />
               </View>
 
-              <WarehouseSearchInput
-                label="Almacén *"
-                value={line.warehouseCode}
-                onSelectWarehouse={(warehouse) => updateLineWarehouse(line.id, warehouse)}
-                onClear={() => clearLineWarehouse(line.id)}
-                placeholder="Buscar almacén..."
-                error={errors[`line-${line.id}-warehouse`]}
-                warehouses={line.availableWarehouses}
-              />
+              {/* Only show warehouse selector for inventoriable items (not pit_Resource) */}
+              {line.itemType !== 'pit_Resource' && (
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Almacén *</Text>
+                  <View style={[
+                    styles.pickerContainer,
+                    errors[`line-${line.id}-warehouse`] && styles.inputError,
+                  ]}>
+                    <Picker
+                      selectedValue={line.warehouseCode}
+                      onValueChange={(value) => updateLineWarehouse(line.id, value)}
+                      enabled={line.availableWarehouses.length > 0}
+                      style={styles.picker}
+                    >
+                      <Picker.Item 
+                        label="Seleccione almacén" 
+                        value="" 
+                        color={theme.colors.textSecondary}
+                      />
+                      {/* Show default warehouse from OF (even if stock 0) */}
+                      {line.defaultWarehouse && (() => {
+                        const defaultWh = line.availableWarehouses.find(w => w.code === line.defaultWarehouse);
+                        if (!defaultWh) {
+                          // Default warehouse not in filtered list (stock 0), add it with warning
+                          return (
+                            <Picker.Item
+                              key={line.defaultWarehouse}
+                              label={`${line.defaultWarehouse} (Stock: 0 - SIN STOCK)`}
+                              value={line.defaultWarehouse}
+                              color={theme.colors.error}
+                            />
+                          );
+                        }
+                        return null;
+                      })()}
+                      {/* Show warehouses with stock > 0 */}
+                      {line.availableWarehouses.map((warehouse) => (
+                        <Picker.Item
+                          key={warehouse.code}
+                          label={`${warehouse.name} (Stock: ${warehouse.inStock})`}
+                          value={warehouse.code}
+                        />
+                      ))}
+                    </Picker>
+                  </View>
+                  {errors[`line-${line.id}-warehouse`] && (
+                    <Text style={styles.errorText}>{errors[`line-${line.id}-warehouse`]}</Text>
+                  )}
+                </View>
+              )}
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Cantidad</Text>
@@ -465,21 +601,55 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
               {line.requiresBatch && (
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Lote *</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
+                  {!line.itemCode || !line.warehouseCode ? (
+                    <View style={styles.disabledPickerContainer}>
+                      <Text style={styles.disabledPickerText}>
+                        Seleccione primero el producto y el almacén
+                      </Text>
+                    </View>
+                  ) : line.loadingBatches ? (
+                    <View style={styles.loadingPickerContainer}>
+                      <Text style={styles.loadingPickerText}>Cargando lotes...</Text>
+                    </View>
+                  ) : line.availableBatches.length === 0 ? (
+                    <View style={styles.noDataPickerContainer}>
+                      <Text style={styles.noDataPickerText}>
+                        No hay lotes disponibles para este producto y almacén
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={[
+                      styles.pickerContainer,
                       errors[`line-${line.id}-batchNumber`] && styles.inputError,
-                    ]}
-                    value={line.batchNumber}
-                    onChangeText={(value) => updateLineBatchNumber(line.id, value)}
-                    placeholder="Ej: LOTE-2024-001"
-                    placeholderTextColor={theme.colors.textSecondary}
-                    maxLength={40}
-                  />
+                    ]}>
+                      <Picker
+                        selectedValue={line.batchNumber}
+                        onValueChange={(value) => updateLineBatchNumber(line.id, value)}
+                        enabled={line.availableBatches.length > 0}
+                        style={styles.picker}
+                      >
+                        <Picker.Item 
+                          label="Seleccione lote" 
+                          value="" 
+                          color={theme.colors.textSecondary}
+                        />
+                        {line.availableBatches.map((batch) => {
+                          const isInsufficient = line.quantity && parseFloat(line.quantity) > batch.quantity;
+                          return (
+                            <Picker.Item
+                              key={batch.batchNum}
+                              label={`${batch.batchNum} (Disponible: ${batch.quantity}${isInsufficient ? ' - INSUFICIENTE' : ''})`}
+                              value={batch.batchNum}
+                              color={isInsufficient ? theme.colors.error : theme.colors.text}
+                            />
+                          );
+                        })}
+                      </Picker>
+                    </View>
+                  )}
                   {errors[`line-${line.id}-batchNumber`] && (
                     <Text style={styles.errorText}>{errors[`line-${line.id}-batchNumber`]}</Text>
                   )}
-                  <Text style={styles.charCounter}>{line.batchNumber.length}/40 caracteres</Text>
                 </View>
               )}
             </View>
@@ -487,10 +657,17 @@ export const CreateConsumerScreen: React.FC<Props> = ({ navigation, route }) => 
         </Card>
 
         {/* Submit Button */}
+        {hasInsufficientBatchQuantity && (
+          <Card style={[styles.card, styles.warningCard]}>
+            <Text style={styles.warningText}>
+              ⚠️ No se puede crear la emisión: Uno o más lotes no tienen cantidad suficiente
+            </Text>
+          </Card>
+        )}
         <Button
           title={isPending ? 'Creando...' : 'Crear Emisión para producción'}
           onPress={handleSubmit}
-          disabled={isPending}
+          disabled={isPending || hasInsufficientBatchQuantity}
           style={styles.submitButton}
         />
       </ScrollView>
@@ -646,5 +823,64 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginTop: theme.spacing.xs,
     textAlign: 'right',
+  },
+  pickerContainer: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.md,
+    overflow: 'hidden',
+  },
+  picker: {
+    height: Platform.OS === 'ios' ? 180 : 50,
+    color: theme.colors.text,
+  },
+  disabledPickerContainer: {
+    backgroundColor: theme.colors.border,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+  },
+  disabledPickerText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  loadingPickerContainer: {
+    backgroundColor: '#E3F2FD',
+    borderWidth: 1,
+    borderColor: '#90CAF9',
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+  },
+  loadingPickerText: {
+    fontSize: theme.fontSize.sm,
+    color: '#1976D2',
+    textAlign: 'center',
+  },
+  noDataPickerContainer: {
+    backgroundColor: '#FFF3CD',
+    borderWidth: 1,
+    borderColor: '#FFE69C',
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+  },
+  noDataPickerText: {
+    fontSize: theme.fontSize.sm,
+    color: '#856404',
+    textAlign: 'center',
+  },
+  warningCard: {
+    backgroundColor: '#FFF3CD',
+    borderWidth: 1,
+    borderColor: '#FFE69C',
+  },
+  warningText: {
+    fontSize: theme.fontSize.md,
+    color: '#856404',
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

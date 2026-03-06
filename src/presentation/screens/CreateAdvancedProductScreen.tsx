@@ -42,6 +42,7 @@ interface AdvancedProductLine {
   baseEntry: number | null;
   baseLine?: number;
   baseType?: number | null;
+  price?: number;
   batchNumbers?: BatchNumbers[];
 }
 
@@ -150,6 +151,7 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
           baseEntry: sourceConsumer.docEntry || null,
           baseLine: line.lineNumber,
           baseType: 60,
+          price: line.price,
           batchNumbers: line.batchNumbers,
         };
       });
@@ -177,6 +179,7 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
       baseEntry: null,
       baseLine: undefined,
       baseType: null,
+      price: undefined,
       batchNumbers: undefined,
     };
     setLines([...lines, newLine]);
@@ -327,6 +330,7 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
       costingCode: line.costingCode || undefined,
       baseLine: line.baseLine,
       baseType: line.baseType,
+      price: line.price,
       batchNumbers: line.batchNumbers && line.batchNumbers.length > 0 
         ? line.batchNumbers.map(bn => ({
             batchNumber: bn.batchNumber ? `${bn.batchNumber}.` : '',

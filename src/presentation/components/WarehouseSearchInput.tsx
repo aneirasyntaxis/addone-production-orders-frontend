@@ -74,8 +74,18 @@ export const WarehouseSearchInput: React.FC<WarehouseSearchInputProps> = ({
 
   // Filter warehouses based on search text
   const filteredWarehouses = useMemo(() => {
-    if (!allWarehouses || searchText.length === 0) {
-      return allWarehouses || [];
+    if (!allWarehouses) {
+      return [];
+    }
+    
+    // If search is empty, return empty array
+    if (searchText.length === 0) {
+      return [];
+    }
+    
+    // If search is "*", return all warehouses
+    if (searchText === '*') {
+      return allWarehouses;
     }
     
     const lowerSearch = searchText.toLowerCase();
@@ -88,6 +98,11 @@ export const WarehouseSearchInput: React.FC<WarehouseSearchInputProps> = ({
     setSearchText(text);
     setSelectedWarehouse(null);
     onClear();
+    
+    // Close dropdown immediately if text is empty
+    if (text.length === 0) {
+      setShowDropdown(false);
+    }
   };
 
   const handleSelectWarehouse = (warehouse: any) => {

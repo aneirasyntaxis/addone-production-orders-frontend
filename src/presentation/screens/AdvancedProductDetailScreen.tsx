@@ -164,6 +164,26 @@ export const AdvancedProductDetailScreen: React.FC<Props> = ({ route, navigation
                     <Text style={styles.value}>{line.warehouseCode}</Text>
                   </View>
                 )}
+                {line.costingCode && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.label}>Cuartel:</Text>
+                    <Text style={styles.value}>{line.costingCode}</Text>
+                  </View>
+                )}
+                {line.projectCode && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.label}>Proyecto:</Text>
+                    <Text style={styles.value}>{line.projectCode}</Text>
+                  </View>
+                )}
+                {line.batchNumbers && line.batchNumbers.length > 0 && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.label}>Lotes:</Text>
+                    <Text style={styles.value}>
+                      {line.batchNumbers.map(b => `${b.batchNumber} (${b.quantity})`).join(', ')}
+                    </Text>
+                  </View>
+                )}
               </View>
             ))}
           </Card>

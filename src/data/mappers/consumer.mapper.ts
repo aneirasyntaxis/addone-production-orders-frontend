@@ -24,6 +24,7 @@ export class ConsumerMapper {
       warehouseCode: dto.warehouseCode ?? undefined,
       projectCode: dto.projectCode ?? undefined,
       costingCode: dto.costingCode ?? undefined,
+      price: dto.price,
       batchNumbers: dto.batchNumbers,
       manageBatchNumbers: dto.manageBatchNumbers,
       itemWarehouseInfoCollection: dto.itemWarehouseInfoCollection,
@@ -53,9 +54,16 @@ export class ConsumerMapper {
       WarehouseCode: line.warehouseCode,
       ProjectCode: line.projectCode,
       CostingCode: line.costingCode,
+      Price: line.price,
       BaseEntry: line.baseEntry,
       BaseLine: line.baseLine,
       BaseType: line.baseType,
+      BatchNumbers: line.batchNumbers?.map(batch => ({
+        BatchNumber: batch.batchNumber,
+        Quantity: batch.quantity,
+        BaseLineNumber: batch.baseLineNumber,
+        ItemCode: batch.itemCode,
+      })),
     };
   }
 

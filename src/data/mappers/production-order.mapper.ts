@@ -64,6 +64,7 @@ export class ProductionOrderMapper {
       ItemNo: line.itemNo,
       // BaseQuantity: line.baseQuantity,
       PlannedQuantity: line.plannedQuantity,
+      WarehouseCode: line.warehouseCode,
       ProductionOrderIssueType: line.productionOrderIssueType,
       ItemType: line.itemType,
       LineText: line.lineText,
