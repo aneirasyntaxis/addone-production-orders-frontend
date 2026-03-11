@@ -12,7 +12,7 @@ export interface AdvancedProductLine {
   warehouseCode?: string;
   projectCode?: string;
   costingCode?: string;
-  price?: number;
+  unitPrice?: number;
   batchNumbers?: BatchNumbers[];
 }
 
@@ -35,7 +35,7 @@ export interface CreateAdvancedProductLine {
   itemCode?: string;
   projectCode?: string;
   costingCode?: string;
-  price?: number;
+  unitPrice?: number;
   baseEntry: number | null;
   baseLine?: number;
   baseType?: number | null;

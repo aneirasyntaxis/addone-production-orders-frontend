@@ -9,7 +9,7 @@ import {
   TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Toast from 'react-native-toast-message';
 import { RootStackParamList } from '../navigation/types';
@@ -37,6 +37,13 @@ export const HomeScreen: React.FC = () => {
   const flatListRef = React.useRef<FlatList>(null);
   const startY = React.useRef(0);
   const scrollY = React.useRef(0);
+
+  // Reload data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      refetch();
+    }, [])
+  );
 
   // Debounce search - búsqueda automática después de 850ms de inactividad
   React.useEffect(() => {

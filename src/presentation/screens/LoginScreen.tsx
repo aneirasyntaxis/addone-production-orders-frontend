@@ -31,6 +31,9 @@ export const LoginScreen: React.FC = () => {
     companyDB?: string;
   }>({});
 
+  const usernameInputRef = React.useRef<any>(null);
+  const passwordInputRef = React.useRef<any>(null);
+
   const { setSession } = useAuth();
   const { data: companies, isLoading: isLoadingCompanies } = useCompanies();
   const { mutate: login, isPending: isLoggingIn } = useLogin();
@@ -154,6 +157,9 @@ export const LoginScreen: React.FC = () => {
               autoCapitalize="none"
               autoCorrect={false}
               error={errors.username}
+              returnKeyType="next"
+              onSubmitEditing={() => passwordInputRef.current?.focus()}
+              ref={usernameInputRef}
             />
 
             <Input
@@ -163,6 +169,9 @@ export const LoginScreen: React.FC = () => {
                 setPassword(text);
                 setErrors((prev) => ({ ...prev, password: undefined }));
               }}
+              returnKeyType="go"
+              onSubmitEditing={handleLogin}
+              ref={passwordInputRef}
               placeholder="Tu contraseña"
               secureTextEntry
               error={errors.password}

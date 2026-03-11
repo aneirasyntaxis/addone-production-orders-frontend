@@ -10,7 +10,7 @@ import {
   TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Toast from 'react-native-toast-message';
 import { RootStackParamList } from '../navigation/types';
@@ -30,6 +30,13 @@ export const ConsumersScreen: React.FC = () => {
   const [searchText, setSearchText] = React.useState('');
   const [searchNumber, setSearchNumber] = React.useState<number | undefined>(undefined);
   const { data: consumers, isLoading, error, refetch, isRefetching } = useConsumers(searchNumber);
+
+  // Reload data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      refetch();
+    }, [])
+  );
 
   // Debounce search - búsqueda automática después de 850ms de inactividad
   React.useEffect(() => {
