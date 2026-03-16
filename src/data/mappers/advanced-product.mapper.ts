@@ -24,7 +24,7 @@ export class AdvancedProductMapper {
       warehouseCode: dto.warehouseCode ?? undefined,
       projectCode: dto.projectCode ?? undefined,
       costingCode: dto.costingCode ?? undefined,
-      price: dto.price,
+      unitPrice: dto.unitPrice,
       batchNumbers: dto.batchNumbers,
     };
   }
@@ -51,7 +51,7 @@ export class AdvancedProductMapper {
       ItemCode: line.itemCode,
       ProjectCode: line.projectCode,
       CostingCode: line.costingCode,
-      Price: line.price,
+      UnitPrice: line.unitPrice,
       BaseEntry: line.baseEntry,
       BaseLine: line.baseLine,
       BaseType: line.baseType,

@@ -16,6 +16,6 @@ export const useConsumerById = (id: number) => {
       return consumer;
     },
     enabled: !!id,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 0, // Always fetch fresh data to get updated prices from SQL Query
   });
 };

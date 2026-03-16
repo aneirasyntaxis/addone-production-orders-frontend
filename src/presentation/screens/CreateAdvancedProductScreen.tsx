@@ -68,7 +68,8 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
         comments: sourceConsumer.comments,
         journalMemo: sourceConsumer.journalMemo,
         linesCount: sourceConsumer.documentLines.length,
-        existingEntriesCount: existingEntries?.length || 0
+        existingEntriesCount: existingEntries?.length || 0,
+        firstLinePrice: sourceConsumer.documentLines[0]?.price // Log price value
       });
       
       // Set dates - try docDueDate first, then docDate as fallback
@@ -330,7 +331,7 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
       costingCode: line.costingCode || undefined,
       baseLine: line.baseLine,
       baseType: line.baseType,
-      unitPrice: line.unitPrice,
+      unitPrice: line.unitPrice ?? 0, // Use 0 if undefined/null
       batchNumbers: line.batchNumbers && line.batchNumbers.length > 0 
         ? line.batchNumbers.map(bn => ({
             batchNumber: bn.batchNumber ? `${bn.batchNumber}.` : '',
@@ -353,7 +354,10 @@ export const CreateAdvancedProductScreen: React.FC<Props> = ({ navigation, route
       documentLines: productLines,
     };
 
-    logger.debug('CreateAdvancedProductScreen: Creating advanced product', { product });
+    logger.debug('CreateAdvancedProductScreen: Creating advanced product', { 
+      product,
+      firstLineUnitPrice: productLines[0]?.unitPrice // Log unitPrice value
+    });
 
     createAdvancedProduct(product, {
       onSuccess: (data) => {

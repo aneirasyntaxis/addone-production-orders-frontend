@@ -12,7 +12,7 @@ export interface AdvancedProductLineDto {
   warehouseCode?: string | null;
   projectCode?: string | null;
   costingCode?: string | null;
-  price?: number;
+  unitPrice?: number;
   batchNumbers?: BatchNumbersDto[];
 }
 
@@ -30,7 +30,7 @@ export interface CreateAdvancedProductLineDto {
   ItemCode?: string;
   ProjectCode?: string;
   CostingCode?: string;
-  Price?: number;
+  UnitPrice?: number;
   BaseEntry: number | null;
   BaseLine?: number;
   BaseType?: number | null;
